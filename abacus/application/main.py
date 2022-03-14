@@ -19,3 +19,6 @@
 
 def main():
     raise NotImplementedError()
+
+def main_gui():
+    raise NotImplementedError()
