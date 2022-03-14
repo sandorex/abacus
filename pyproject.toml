@@ -18,7 +18,7 @@ classifiers = [
 ]
 dynamic = ["version", "description"]
 dependencies = [
-    "ipython ~= 7.21"
+    "ipython ~= 7.21",
     "sympy ~= 1.10",
 ]
 
