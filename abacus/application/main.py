@@ -17,8 +17,23 @@
 #
 """Main for the application"""
 
+import IPython, sys
+
+from .. import __version__
+from traitlets.config.loader import Config as IPythonConfig
+
 def main():
-    raise NotImplementedError()
+    config = IPythonConfig()
+    config.TerminalIPythonApp.display_banner = False # TODO: im disabling it for
+                                                     # now as i do not know how
+                                                     # im going to handle configs
+                                                     # and you couldn't disable
+                                                     # it otherwise
+    # config.TerminalInteractiveShell.banner1 = f'''Abacus {__version__} running on IPython {IPython.__version__}'''
+
+    config.InteractiveShellApp.extensions = ['abacus']
+
+    IPython.start_ipython(argv=sys.argv[1:], config=config)
 
 def main_gui():
     raise NotImplementedError()
