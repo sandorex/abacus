@@ -28,8 +28,8 @@ def tokenize(input: str):
 def insert_token(tokens: List[TokenInfo], index, token_type, token_str):
     """Inserts token into position at index and returns new changed tokens list
 
-    NOTE: this function can only insert single line tokens, multi line tokens
-    will break it
+    NOTE: this function can only insert single line tokens, inserting multi line
+    tokens WILL break it
     """
     result = tokens[:index]
     token_length = len(token_str)
@@ -99,8 +99,9 @@ def transform_inferred_mul(lines: List[str]):
     return result
 
 def load_ipython_extension(ipy):
-    print(f"""\nWARNING: inferred_multi extension is highly experimental and may break pure python code
-please unload with `%unload_ext {__package__}` if you encounter problems""")
+    # TODO: print this only the first time somehow? it is annoying and disctracting
+#     print(f"""\nWARNING: inferred_multi extension is highly experimental and may break pure python code
+# please unload with `%unload_ext {__package__}` if you encounter problems""")
 
     if transform_inferred_mul not in ipy.input_transformers_post:
         ipy.input_transformers_post.append(transform_inferred_mul)

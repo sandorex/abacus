@@ -15,21 +15,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ... import config
-from .magic import AbacusMagics
+import platform
 
 def load_ipython_extension(ipy):
-    ipy.register_magics(AbacusMagics)
-    ipy.ex('import sympy')
+    # magic aliases
+    for i, j in [
+        ('var', 'who'),
+        ('val', 'whos'),
+    ]:
+        ipy.magics_manager.register_alias(i, j)
 
-    cfg = config.get_config(ipy)
+    # cmd aliases
+    if platform.system().lower() == 'windows':
+        ipy.alias_manager.define_alias('clear', 'cls') # TODO: check on linux
 
-    # load extensions
-    for i in cfg.get('extensions'):
-        ipy.extension_manager.load_extension(i)
-
-    if cfg.get('start_session') == True:
-        ipy.run_line_magic('init', 'quiet')
-
-def unload_ipython_extension(ipy):
-    del ipy.magics_manager.registry[AbacusMagics.__name__] # FIXME: dirty
+# def unload_ipython_extension(ipy):
+#     pass

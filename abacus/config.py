@@ -15,21 +15,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ... import config
-from .magic import AbacusMagics
+from email.policy import default
+from . import extensions
 
-def load_ipython_extension(ipy):
-    ipy.register_magics(AbacusMagics)
-    ipy.ex('import sympy')
+default_config = {
+    # should sympy session be started automatically
+    'start_session': True,
 
-    cfg = config.get_config(ipy)
+    # refer to `sympy.init_session` for details # TODO: ignored currently
+    'auto_symbols': True,
+    'auto_integers': True,
 
-    # load extensions
-    for i in cfg.get('extensions'):
-        ipy.extension_manager.load_extension(i)
+    # extensions that come enabled by default
+    'extensions': {
+        extensions.aliases.__name__,
+        extensions.basic_prompt.__name__,
+        extensions.inferred_multi.__name__,
+    }
+}
 
-    if cfg.get('start_session') == True:
-        ipy.run_line_magic('init', 'quiet')
-
-def unload_ipython_extension(ipy):
-    del ipy.magics_manager.registry[AbacusMagics.__name__] # FIXME: dirty
+def get_config(ipy):
+    return { **default_config, **ipy.config.get('abacus', {}) }

@@ -14,7 +14,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
+
 import sympy
 
 from IPython.core.magic import Magics, magics_class, line_magic
@@ -24,12 +24,13 @@ class AbacusMagics(Magics):
     @line_magic
     def init(self, line):
         init_session()
-        print('Sympy session started')
 
-    # TODO: try to load and unload additional sub extensions with magics
+        if line != 'quiet':
+            print('Sympy session started')
 
 def init_session():
     """Calls `sympy.init_session` with default options"""
+    # TODO: respect config when doing this
     sympy.init_session(
         quiet=True,
         use_unicode=True,
