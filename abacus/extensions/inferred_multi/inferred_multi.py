@@ -84,7 +84,10 @@ def transform_inferred_mul(lines: List[str]):
         tokens = tokenize(line)
         prev: TokenInfo = None
         for i, j in enumerate(tokens):
+            # TODO: FIXME: this is ugly but im lazy rn
             if token_good(prev) and token_good(j):
+                token_insert_index.append(i)
+            elif prev is not None and prev.type == token.OP and prev.string == ')' and token_good(j):
                 token_insert_index.append(i)
 
             prev = j

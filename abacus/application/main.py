@@ -20,11 +20,11 @@
 import IPython, sys
 
 from .. import __version__
-from traitlets.config.loader import Config as IPythonConfig
+from traitlets.config import Config as IPythonConfig
 
 def main():
     config = IPythonConfig()
-    config.TerminalIPythonApp.display_banner = False # TODO: im disabling it for
+    # config.TerminalIPythonApp.display_banner = False # TODO: im disabling it for
                                                      # now as i do not know how
                                                      # im going to handle configs
                                                      # and you couldn't disable
@@ -32,6 +32,11 @@ def main():
     # config.TerminalInteractiveShell.banner1 = f'''Abacus {__version__} running on IPython {IPython.__version__}'''
 
     config.InteractiveShellApp.extensions = ['abacus']
+    # config.Completer.use_jedi = False
+    # config.InteractiveShellApp.pylab_import_all = False
+    # config.IPCompleter.jedi_compute_type_timeout = 0
+    config.TerminalIPythonApp.quick = True
+    config.InteractiveShell.debug = True
 
     IPython.start_ipython(argv=sys.argv[1:], config=config)
 

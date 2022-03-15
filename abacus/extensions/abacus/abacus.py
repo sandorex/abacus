@@ -15,6 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+
 from ... import config
 from .magic import AbacusMagics
 
@@ -27,6 +29,11 @@ def load_ipython_extension(ipy):
     # load extensions
     for i in cfg.get('extensions'):
         ipy.extension_manager.load_extension(i)
+
+    if hasattr(sys, 'ps1'):
+        # load interactive only extensions
+        for i in cfg.get('interactive_ext'):
+            ipy.extension_manager.load_extension(i)
 
     if cfg.get('start_session') == True:
         ipy.run_line_magic('init', 'quiet')

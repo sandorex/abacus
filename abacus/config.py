@@ -28,9 +28,13 @@ default_config = {
 
     # extensions that come enabled by default
     'extensions': {
+        extensions.inferred_multi.__name__,
+    },
+
+    # default extensions that load only in interactive sessions
+    'interactive_ext': {
         extensions.aliases.__name__,
         extensions.basic_prompt.__name__,
-        extensions.inferred_multi.__name__,
     }
 }
 

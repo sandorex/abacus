@@ -22,7 +22,7 @@ class BasicPrompt(Prompts):
         return [(Token.Prompt, ':: ')]
 
     def out_prompt_tokens(self):
-       return [(Token.ZeroWidthEscape, '')]
+       return []
 
     def continuation_prompt_tokens(self, cli=None, width=None):
         return [(Token.PromptNum, '... ')]
