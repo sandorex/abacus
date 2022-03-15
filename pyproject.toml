@@ -13,7 +13,9 @@ authors = [
 readme = "README.md"
 license = {file = "LICENSE"}
 classifiers = [
-    "License :: OSI Approved :: Apache Software License",
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Environment :: Console",
     "Framework :: IPython"
 ]
 dynamic = ["version", "description"]
