@@ -14,29 +14,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+"""All abacus transformers go in here"""
 
-import sys
-
-from ... import config
-from .magic import AbacusMagics
-
-def load_ipython_extension(ipy):
-    ipy.register_magics(AbacusMagics)
-    ipy.ex('import sympy')
-
-    cfg = config.get_config(ipy)
-
-    # load extensions
-    for i in cfg.get('extensions'):
-        ipy.extension_manager.load_extension(i)
-
-    if hasattr(sys, 'ps1'):
-        # load interactive only extensions
-        for i in cfg.get('interactive_ext'):
-            ipy.extension_manager.load_extension(i)
-
-    if cfg.get('start_session') == True:
-        ipy.run_line_magic('init', 'quiet')
-
-def unload_ipython_extension(ipy):
-    del ipy.magics_manager.registry[AbacusMagics.__name__] # FIXME: dirty
+from . import auto_symbol
+from . import implied_multiplication

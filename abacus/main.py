@@ -14,7 +14,17 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-"""IPython extension that provides very basic and minimal prompt"""
 
-from .basic_prompt import load_ipython_extension, unload_ipython_extension
+from .basic_console import main_basic
+
+try:
+    from .ipython import main_ipython
+except ImportError:
+    pass
+
+# by default prefer IPython version
+def main():
+    try:
+        main_ipython()
+    except NameError:
+        main_basic()

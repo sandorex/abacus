@@ -16,19 +16,25 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     "Environment :: Console",
-    "Framework :: IPython"
+    "Framework :: IPython",
 ]
 dynamic = ["version", "description"]
 dependencies = [
-    "ipython ~= 7.21",
-    "sympy ~= 1.10",
+    "sympy ~= 1.9",
+]
+
+[project.optional-dependencies]
+full = [
+    "ipython ~= 7.21"
+]
+gui = [
+    "pyqt5 ~= 5.15",
 ]
 
 [project.scripts]
-abacus = "abacus:main"
-
-[project.gui-scripts]
-abacus-gui = "abacus:main_gui"
+abacus = "abacus.main:main"
+abacus-basic = "abacus.main:main_basic"
+abacus-ipython = "abacus.main:main_ipython"
 
 [project.urls]
 Home = "https://sandorex.github.io/abacus"

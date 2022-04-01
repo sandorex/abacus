@@ -15,5 +15,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
-"""Contains abacus runtime stuff, stuff that is not used when abacus is loaded
-as an extension inside IPython"""
+"""IPython extension that provides very basic and minimal prompt"""
+
+from .prompt import load_ipython_extension, unload_ipython_extension

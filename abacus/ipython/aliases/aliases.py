@@ -28,6 +28,3 @@ def load_ipython_extension(ipy):
     # cmd aliases
     if platform.system().lower() == 'windows':
         ipy.alias_manager.define_alias('clear', 'cls') # TODO: check on linux
-
-# def unload_ipython_extension(ipy):
-#     pass
