@@ -90,12 +90,23 @@ class AutoSymbolTransformer(ast.NodeTransformer, ConsoleExtension):
 
         return node
 
+    def _has_symbol(self, node: ast.AST) -> bool:
+        """Checks if node is a symbol or contains one"""
+        if isinstance(node, ast.BinOp):
+            return self._has_symbol(node.left) or self._has_symbol(node.right)
+        elif isinstance(node, ast.UnaryOp):
+            return self._has_symbol(node.operand)
+        elif isinstance(node, ast.Compare):
+            return self._has_symbol(node.left) or any(self._has_symbol(x) for x in node.comparators)
+
+        return self._is_symbol(node)
+
     def visit_Compare(self, node: ast.Compare):
         # run on children so symbols are made
         self.generic_visit(node)
 
         # TODO: make it work for any number of comparisons..
-        if len(node.ops) == 1 and (self._is_symbol(node.left) or self._is_symbol(node.comparators[0])):
+        if len(node.ops) == 1 and (self._has_symbol(node.left) or self._has_symbol(node.comparators[0])):
             if isinstance(node.ops[0], ast.Eq):
                 return ast.Call(
                     func=ast.Attribute(
