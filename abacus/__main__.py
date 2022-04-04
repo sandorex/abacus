@@ -15,5 +15,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from .main import main
+# NOTE: using absolute import on purpose cause of pyinstaller
+from abacus.main import main
 main()

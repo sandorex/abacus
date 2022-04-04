@@ -1,0 +1,47 @@
+name: Build Latest
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-n-publish:
+    name: Build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@master
+        with:
+          fetch-depth: 0
+      - name: Set up latest Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.x'
+      - name: Update version to include the commit
+        run: python scripts/update-version-ci.py
+      - name: Install build tools
+        run: python -m pip install build pyinstaller
+      - name: Build a binary wheel and a source tarball
+        run: python -m build --sdist --wheel --outdir dist/ .
+      - name: Install dependencies by installing the package itself
+        run: python -m pip install .[full]
+      - name: Build bundled executables
+        run: |
+          pyinstaller assets/pyinstaller/abacus.spec
+          pyinstaller assets/pyinstaller/abacus-basic.spec
+      - name: Delete old release
+        run: |
+          git fetch --tags
+          hub release delete LATEST
+        continue-on-error: true # if the release is deleted it wont fail anymore
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Update the latest release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Latest Build
+          body: Build commit ${{ github.sha }}
+          prerelease: True
+          tag_name: LATEST
+          target_commitish: ${{ github.sha }}
+          files: |
+            dist/*

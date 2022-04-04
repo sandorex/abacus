@@ -28,6 +28,7 @@ class IPythonConsole(IConsole):
 
         self.ipython = ipy
 
+        # TODO: don't show if ran in its own window as its own application?
         print(self.welcome_message())
 
         # TODO: config stuff
@@ -60,6 +61,11 @@ class IPythonConsole(IConsole):
     def console_type() -> str:
         return 'ipython'
 
+    @classmethod
+    def title(cls) -> str:
+        # add current directory to the title
+        return super().title() + ' [{cwd}]'
+
     # TODO:
     def run_interactive(self, code: Union[str, List[ast.AST], CodeObj]) -> Any:
         if isinstance(code, str):
@@ -82,6 +88,7 @@ def main_ipython():
     cfg.TerminalIPythonApp.display_banner = False
     cfg.TerminalIPythonApp.quick = True
     cfg.InteractiveShellApp.pylab_import_all = False
+    cfg.TerminalInteractiveShell.term_title_format = IPythonConsole.title()
 
     # load abacus directly so it isn't an extension
     cfg.InteractiveShellApp.exec_lines = [

@@ -14,7 +14,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-"""Abacus is an interactive calculator using IPython"""
-__version__ = '0.2.1'
-__version_info__ = (0, 2, 1)
+
+from abacus.basic_console import main_basic
+
+if __name__ == '__main__':
+    main_basic()

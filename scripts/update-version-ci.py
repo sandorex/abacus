@@ -15,6 +15,29 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
-"""Abacus is an interactive calculator using IPython"""
-__version__ = '0.2.1'
-__version_info__ = (0, 2, 1)
+"""Script that appends git info to package version"""
+
+import subprocess
+
+FILE = 'abacus/__init__.py'
+
+CMD_GIT_GET_COMMIT = [
+    'git', 'rev-parse', '--short=8', 'HEAD'
+]
+
+def run(cmd):
+    return subprocess.run(cmd, stdout=subprocess.PIPE).stdout.decode('utf-8').strip()
+
+version_info = f'+{run(CMD_GIT_GET_COMMIT)}'
+
+contents = ''
+with open(FILE, 'r') as file:
+    contents = file.readlines()
+
+for i, line in enumerate(contents):
+    if line.strip().startswith('__version__'):
+        contents[i] = contents[i].strip()[:-1] + version_info + "'\n"
+        break
+
+with open(FILE, 'w') as file:
+    file.writelines(contents)

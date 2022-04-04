@@ -97,7 +97,7 @@ class IConsole(metaclass=ABCMeta):
 
     @staticmethod
     @abstractmethod
-    def console_type(cls) -> str:
+    def console_type() -> str:
         """Returns string for which type of console it is"""
         pass
 
@@ -122,10 +122,17 @@ class IConsole(metaclass=ABCMeta):
     def set_auto_symbol(self, state: bool):
         self.ext_auto_symbol.register_toggle(state)
 
-    def welcome_message(self) -> str:
+    @classmethod
+    def title(cls) -> str:
+        """Window title"""
+
+        return f"""Abacus {__version__} ({cls.console_type()})"""
+
+    @classmethod
+    def welcome_message(cls) -> str:
         """Greet message shown on startup of abacus"""
 
-        return f"""\t:: Abacus {__version__} ({self.console_type()}) ::"""
+        return f"""\t:: Abacus {__version__} ({cls.console_type()}) ::"""
 
     def push(self, _locals: Mapping[str, Any]) -> 'IConsole':
         """Set locals in the user namespace"""
