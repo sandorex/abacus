@@ -18,9 +18,10 @@
 import ast, code
 
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
-from .console import CodeObj, IConsole
+from ..shell import CodeObj, ShellBase
 
-class IConsoleBasic(IConsole):
+# TODO: basic shell is kinda borked, StringTransformer changes messed it up
+class BasicShell(ShellBase):
     def __init__(self):
         super().__init__()
 
@@ -29,9 +30,6 @@ class IConsoleBasic(IConsole):
         self._ast_transformers = []
         self._event_callbacks = {}
         self.interpreter = code.InteractiveInterpreter(self.user_ns)
-
-        self.set_auto_symbol(True)
-        self.set_impl_multi(True)
 
         self.init_ns()
 
@@ -52,7 +50,7 @@ class IConsoleBasic(IConsole):
         return self._str_transformers
 
     @staticmethod
-    def console_type() -> str:
+    def shell_type() -> str:
         return 'basic'
 
     def run_interactive(self,
@@ -60,7 +58,7 @@ class IConsoleBasic(IConsole):
                         transform=True):
         if isinstance(code, str):
             if transform:
-                code = self.str_transform(code) # TODO: maybe split by line?
+                code = self.str_transform(code)
 
             code = ast.parse(code, filename='<input>', mode='exec')
 
@@ -90,24 +88,3 @@ class IConsoleBasic(IConsole):
             module = compile(node, filename='<input>', mode='exec')
 
         return stmt, module
-
-def main_basic(*, imitate_user_input=False):
-    console = IConsoleBasic()
-    print(console.welcome_message())
-
-    while True:
-        try:
-            x = input(':: ')
-        except KeyboardInterrupt:
-            break
-
-        if not x:
-            break
-
-        # if imitate_user_input:
-        #     print(':: ' + x)
-
-        console.run_interactive(x)
-
-if __name__ == '__main__':
-    main_basic()

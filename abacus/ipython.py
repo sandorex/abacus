@@ -14,6 +14,10 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+# this is basically a shim to start ipython version of abacus
 
-from abacus import main
-main()
+from .ipython_shell import main_ipython
+
+if __name__ == '__main__':
+    main_ipython()

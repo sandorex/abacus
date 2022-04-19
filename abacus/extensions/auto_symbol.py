@@ -17,32 +17,32 @@
 
 import ast, sympy
 
-from ..console import ConsoleExtension, IConsole
+from ..shell import ShellExtension, ShellBase
 
-class AutoSymbolTransformer(ast.NodeTransformer, ConsoleExtension):
-    def __init__(self, console: IConsole):
-        ConsoleExtension.__init__(self)
+class AutoSymbol(ast.NodeTransformer, ShellExtension):
+    def __init__(self, shell: ShellBase):
+        ShellExtension.__init__(self)
 
-        self.console = console
+        self.shell = shell
         self.symbols = []
 
     def register(self):
         # auto symbol needs to be ran before the impl multiplication
-        self.console.ast_transformers.insert(0, self)
-        self.console._register_event('post_execute', self.post_execute)
+        self.shell.ast_transformers.insert(0, self)
+        self.shell._register_event('post_execute', self.post_execute)
 
         return super().register()
 
     def unregister(self):
-        self.console.ast_transformers.remove(self)
-        self.console._unregister_event('post_execute', self.post_execute)
+        self.shell.ast_transformers.remove(self)
+        self.shell._unregister_event('post_execute', self.post_execute)
 
         super().unregister()
 
     def post_execute(self):
         """Deletes symbols found while parsing AST"""
         for i in self.symbols:
-            self.console.execute(f'del {i}')
+            self.shell.execute(f'del {i}')
 
         # remove old symbols
         self.symbols = []
@@ -51,7 +51,7 @@ class AutoSymbolTransformer(ast.NodeTransformer, ConsoleExtension):
         """Checks if expr is a defined symbol in user namespace, used after
         all undefined names are defined as symbols"""
         if isinstance(expr, ast.Name):
-            return isinstance(self.console.user_ns.get(expr.id), sympy.Symbol)
+            return isinstance(self.shell.user_ns.get(expr.id), sympy.Symbol)
 
         return False
 
@@ -62,8 +62,10 @@ class AutoSymbolTransformer(ast.NodeTransformer, ConsoleExtension):
     #     return node
 
     def visit_Constant(self, node: ast.Constant):
-        # wrap integers in `sympy.Integer`
-        if isinstance(node.value, int):
+        # wrap integers in `sympy.Integer`, imitates sympy's auto integer
+
+        # NOTE: for some reason bool is also an int?
+        if isinstance(node.value, int) and not isinstance(node.value, bool):
             return ast.Call(
                 func=ast.Attribute(
                     value=ast.Name(id='sympy', ctx=ast.Load()),
@@ -82,11 +84,11 @@ class AutoSymbolTransformer(ast.NodeTransformer, ConsoleExtension):
             return node
 
         # create names as symbols if not already created
-        if node.id not in self.console.user_ns \
+        if node.id not in self.shell.user_ns \
             and node.id not in self.symbols \
             and node.id not in __builtins__:
             self.symbols.append(node.id)
-            self.console.execute(f'{node.id} = sympy.Symbol("{node.id}")')
+            self.shell.execute(f'{node.id} = sympy.Symbol("{node.id}")')
 
         return node
 

@@ -15,5 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from abacus import main
-main()
+from .basic_shell import main_basic
+
+if __name__ == '__main__':
+    main_basic()

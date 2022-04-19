@@ -15,7 +15,21 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from abacus.basic_console import main_basic
+from .basic_shell import BasicShell
 
-if __name__ == '__main__':
-    main_basic()
+# TODO: this is really crude
+def main_basic(*, pyinstaller=False):
+    shell = BasicShell()
+
+    print(shell.welcome_message())
+
+    while True:
+        try:
+            x = input(':: ')
+        except KeyboardInterrupt:
+            break
+
+        if not x:
+            break
+
+        shell.run_interactive(x)

@@ -14,26 +14,13 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+# this file sets all the defaults for abacus
+# type: ignore
 
-from IPython.terminal.prompts import Prompts, Token
+sympy.init_printing(use_unicode=False)
 
-class BasicPrompt(Prompts):
-    def in_prompt_tokens(self, cli=None):
-        return [(Token.Prompt, ':: ')]
+from sympy import solve
 
-    def out_prompt_tokens(self):
-       return []
-
-    def continuation_prompt_tokens(self, cli=None, width=None):
-        return [(Token.PromptNum, '... ')]
-
-def load_ipython_extension(ipy):
-    prompt = BasicPrompt(ipy)
-    prompt.old = ipy.prompts
-    ipy.prompts = prompt
-
-def unload_ipython_extension(ipy):
-    if hasattr(ipy.prompts, 'old'):
-        ipy.prompts = ipy.prompts.old
-    else:
-        print('Unable to unload prompt for some reason, maybe it was not loaded?')
+class formulas:
+    ohms_law = V == I R

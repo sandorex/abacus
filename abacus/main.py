@@ -15,15 +15,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from .basic_console import main_basic
+# NOTE: this is moved here so entry point could be made
 
-try:
-    from .ipython import main_ipython
-except ImportError:
-    pass
-
-# by default prefer IPython version
 def main():
+    from abacus.basic_shell import main_basic
+
+    try:
+        from abacus.ipython_shell import main_ipython
+    except ImportError:
+        pass
+
+    # by default prefer IPython version
     try:
         main_ipython()
     except NameError:

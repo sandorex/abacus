@@ -15,7 +15,4 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from abacus.ipython import main_ipython
-
-if __name__ == '__main__':
-    main_ipython()
+from .main import main_basic

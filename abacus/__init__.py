@@ -16,5 +16,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 """Abacus is an interactive calculator using IPython"""
-__version__ = '0.2.1'
-__version_info__ = (0, 2, 1)
+__version__ = '0.2.2'
+__version_info__ = (0, 2, 2)
+
+from .main import main

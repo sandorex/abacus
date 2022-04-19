@@ -15,4 +15,4 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from .ipython_console import main_ipython, load_ipython_extension
+from .main import main_ipython, load_ipython_extension

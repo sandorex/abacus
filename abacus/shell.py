@@ -15,17 +15,21 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import ast
+import ast, importlib.resources
 
 from abc import abstractmethod, ABCMeta
-from typing import (
-    Dict, TypeVar, Callable, Any, List, Mapping, Union
+from io import StringIO
+from tokenize import (
+    TokenInfo,
+    untokenize as _untokenize,
+    generate_tokens as _generate_tokens
 )
-from . import __version__, __version_info__
+from typing import  Dict, TypeVar, Callable, Any, List, Mapping, Union
+from . import ns, __version__, __version_info__
 
 CodeObj = TypeVar('CodeObj')
 
-class ConsoleExtension:
+class ShellExtension:
     def __init__(self):
         self._registered = False
 
@@ -37,9 +41,9 @@ class ConsoleExtension:
     def unregister(self):
         self._registered = False
 
-    def register_toggle(self, state: bool=None):
+    def register_set(self, state: bool=None):
         if state is None:
-            self.register_toggle(not self.is_registered())
+            self.register_set(not self.is_registered())
         elif state == True:
             if not self.is_registered():
                 self.register()
@@ -51,29 +55,44 @@ class ConsoleExtension:
         return self._registered
 
 class StringTransformer(metaclass=ABCMeta):
-    @abstractmethod
-    def transform(self, line: str) -> str:
-        pass
+    @classmethod
+    def _tokenize(cls, input: str) -> List[TokenInfo]:
+        return list(_generate_tokens(StringIO(input).readline))
 
-    def transform_lines(self, lines: List[str]) -> List[str]:
-        result = []
-        for line in lines:
-            result.append(self.transform(line))
+    @classmethod
+    def _untokenize(cls, tokens: List[TokenInfo]) -> str:
+        return _untokenize(tokens)
 
-        return result
+    def transform(self, lines: List[str]) -> List[str]:
+        return lines
+
+    def transform_tokens(self, tokens: List[TokenInfo]) -> List[TokenInfo]:
+        return []
 
     def __call__(self, lines: List[str]) -> List[str]:
-        return self.transform_lines(lines)
+        lines = self.transform(lines)
 
-class IConsole(metaclass=ABCMeta):
+        tokens = self._tokenize(''.join(lines))
+        tokens = self.transform_tokens(tokens)
+
+        if not tokens:
+            return lines
+        else:
+            # NOTE: the NL characters are required and it wont run properly
+            # without them
+            return self._untokenize(tokens).splitlines(keepends=True)
+
+class ShellBase(metaclass=ABCMeta):
     def __init__(self):
         # importing here so there is no circular import
-        from abacus.transformations.auto_symbol import AutoSymbolTransformer
-        from abacus.transformations.implied_multiplication import ImplMulTransformer
+        from .extensions.auto_symbol import AutoSymbol
+        from .extensions.implied_multiplication import ImpliedMultiplication
+        from .extensions.debug import Debugger
 
         # NOTE: making instances not registering them!
-        self.ext_auto_symbol = AutoSymbolTransformer(self)
-        self.ext_impl_multi = ImplMulTransformer(self)
+        self.ext_auto_symbol = AutoSymbol(self)
+        self.ext_impl_multi = ImpliedMultiplication(self)
+        self.ext_debug = Debugger(self)
 
     @property
     @abstractmethod
@@ -97,9 +116,23 @@ class IConsole(metaclass=ABCMeta):
 
     @staticmethod
     @abstractmethod
-    def console_type() -> str:
-        """Returns string for which type of console it is"""
+    def shell_type() -> str:
+        """Returns string for which type of shell it is"""
         pass
+
+    def run_file(self, file: Union[str, Any], *, package=None):
+        """Runs whole file interactively
+
+        `package` look for the file inside python package `package`"""
+
+        if package is not None:
+            fp = importlib.resources.open_text(package, str(file))
+        else:
+            fp = open(file, 'r')
+
+
+        with fp:
+            self.run_interactive(fp.read())
 
     @abstractmethod
     def run_interactive(self,
@@ -116,44 +149,54 @@ class IConsole(metaclass=ABCMeta):
             `CodeObj`: No transformation is done"""
         pass
 
+    def set_debug(self, state: bool):
+        self.ext_debug.register_set(state)
+
     def set_impl_multi(self, state: bool):
-        self.ext_impl_multi.register_toggle(state)
+        self.ext_impl_multi.register_set(state)
 
     def set_auto_symbol(self, state: bool):
-        self.ext_auto_symbol.register_toggle(state)
+        self.ext_auto_symbol.register_set(state)
 
     @classmethod
     def title(cls) -> str:
         """Window title"""
 
-        return f"""Abacus {__version__} ({cls.console_type()})"""
+        return f"""Abacus {__version__} ({cls.shell_type()})"""
 
     @classmethod
     def welcome_message(cls) -> str:
         """Greet message shown on startup of abacus"""
 
-        return f"""\t:: Abacus {__version__} ({cls.console_type()}) ::"""
+        return f"""\t:: Abacus {__version__} ({cls.shell_type()}) ::"""
 
-    def push(self, _locals: Mapping[str, Any]) -> 'IConsole':
+    def push(self, _locals: Mapping[str, Any]) -> 'ShellBase':
         """Set locals in the user namespace"""
 
         self.user_ns.update(_locals)
 
         return self
 
-    def init_ns(self, _locals: Mapping[str, Any]={}) -> 'IConsole':
+    def init_ns(self, _locals: Mapping[str, Any]={}) -> 'ShellBase':
         """Initializes the namespace with default values"""
 
         self.push({
             **_locals,
             '__version__': __version__,
             '__version_info__': __version_info__,
-            '__abacus__': self.console_type(),
+            '__abacus__': self.shell_type(),
             'abacus': self,
         })
 
+        # NOTE: importing sympy using execute cause transformers need it and
+        # execute does not do any transformation
         self.execute('import sympy')
-        self.execute('sympy.init_printing(use_unicode=True)')
+
+        self.set_auto_symbol(True)
+        self.set_impl_multi(True)
+
+        # run the init file and let it take care of everything
+        self.run_file('init.pyi', package=ns.__package__)
 
         return self
 
