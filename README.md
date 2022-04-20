@@ -1,14 +1,26 @@
 # Abacus
 [![PyPI version](https://badge.fury.io/py/abacus-icalc.svg)](https://badge.fury.io/py/abacus-icalc)
 
-Powerful interactive calculator made in Python using Python with Python support
+Powerful interactive calculator *made in Python using Python with Python support*
 
 ## Installation
-To install Abacus currently the recommended way is using pip package `abacus-icalc`, but you can find the 
+To install Abacus run the following command with pip installed
 
-To install using pip run the following command
-```sh
+```shell
 python -m pip install abacus-icalc[full]
+```
+
+`[full]` tells it to install IPython as a dependency as that is the best version currently
+
+### Latest
+Another option is to install the latest version from master branch
+```shell
+python -m pip install abacus-icalc[full]@https://github.com/sandorex/abacus.git
+```
+
+For other branches append `@branch` to the url like so
+```shell
+python -m pip install abacus-icalc[full]@git+https://github.com/sandorex/abacus.git@branch
 ```
 
 ## IPython or not
