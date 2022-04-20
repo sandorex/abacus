@@ -21,6 +21,3 @@
 sympy.init_printing(use_unicode=False)
 
 from sympy import solve
-
-class formulas:
-    ohms_law = V == I R
