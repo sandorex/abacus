@@ -11,7 +11,7 @@ authors = [
     {name = "Aleksandar Radivojevic", email = "rzhw3h@gmail.com"}
 ]
 readme = "README.md"
-license = {file = "LICENSE"}
+license = "GPL-3.0-or-later"
 classifiers = [
     "Development Status :: 4 - Beta",
     "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
