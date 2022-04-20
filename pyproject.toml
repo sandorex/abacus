@@ -23,8 +23,8 @@ dependencies = [
 description = "An interactive algebra calculator built in Python using Python"
 
 [project.optional-dependencies]
-full = [
-    "ipython ~= 7.21"
+ipython = [
+    "ipython ~= 7.21",
 ]
 
 [project.scripts]
