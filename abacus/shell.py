@@ -136,7 +136,7 @@ class ShellBase(metaclass=ABCMeta):
 
     @abstractmethod
     def run_interactive(self,
-                        code: Union[str, List[ast.AST], CodeObj],
+                        code: Union[str, ast.Module, CodeObj],
                         transform=True,
                         imitate_user_input=False):
         """Evaluates the code inside the namespace after ast and string
@@ -145,7 +145,7 @@ class ShellBase(metaclass=ABCMeta):
         `transform`: Should input be transformed, do note that not all
         transformations can be done on all types of input:
             `str`: All transformations are performed
-            `ast.AST`: Only AST transformation will be performed
+            `ast.Module`: Only AST transformation will be performed
             `CodeObj`: No transformation is done"""
         pass
 
@@ -236,22 +236,13 @@ class ShellBase(metaclass=ABCMeta):
 
         return node
 
-    def str_transform(self, code: Union[str, List[str]]) -> Union[str, List[str]]:
-        """Performs string transformation on the code"""
+    def str_transform(self, code: List[str]) -> List[str]:
+        """Performs string transformation on the code
 
-        got_str = False
-
-        if isinstance(code, str):
-            code = [code]
-            got_str = True
-
-        result = code
+        WARNING: the input `code` may be modified in the process"""
 
         i: Callable[[str], str]
         for i in self.str_transformers:
-            result = i(result)
+            code = i(code)
 
-        if got_str:
-            return result[0]
-
-        return result
+        return code

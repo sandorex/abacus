@@ -54,16 +54,20 @@ class BasicShell(ShellBase):
         return 'basic'
 
     def run_interactive(self,
-                        code: Union[str, List[ast.AST], CodeObj],
+                        code: Union[str, ast.Module, CodeObj],
                         transform=True):
+        # TODO: rework this whole thing, it's a mess
+        # maybe even change the function into multiple per type supplied
+
         if isinstance(code, str):
             if transform:
-                code = self.str_transform(code)
+                code = self.str_transform(code.splitlines(keepends=True))
 
-            code = ast.parse(code, filename='<input>', mode='exec')
+            code = ast.parse(''.join(code), filename='<input>', mode='exec')
 
-        if transform:
-            self.ast_transform(code)
+        if isinstance(code, ast.AST):
+            if transform:
+                self.ast_transform(code)
 
         (stmt, module) = self.compile_ast(code)
 

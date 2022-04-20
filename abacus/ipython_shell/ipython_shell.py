@@ -62,7 +62,7 @@ class IPythonShell(ShellBase):
         # add current directory to the title
         return super().title() + ' [{cwd}]'
 
-    def run_interactive(self, code: Union[str, List[ast.AST], CodeObj]) -> Any:
+    def run_interactive(self, code: Union[str, ast.Module, CodeObj]) -> Any:
         if isinstance(code, str):
             self.ipython.run_cell(code)
         else:
@@ -73,4 +73,6 @@ class IPythonShell(ShellBase):
         return self.ipython.transform_ast(node)
 
     def str_transform(self, code: str) -> str:
-        return self.ipython.transform_cell(code)
+        # TODO: this can't be implemented as transform_cell does both ast and str transformation
+        # TODO: rethink whole ShellBase and minimize the functions inside as many are probably not needed in each shell and ipython is a pain
+        return self.ipython.transform_cell(code) #TODO: does this take List[str] or not?
