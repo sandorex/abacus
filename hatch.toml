@@ -4,6 +4,11 @@ path = "abacus/__init__.py"
 source = "vcs"
 fallback-version = '0.0.0'
 
+[build]
+include = [
+    "abacus/**" # include everything inside the package
+]
+
 [build.hooks.vcs]
 version-file = "abacus/__info__.py"
 template = """\
@@ -13,7 +18,5 @@ __version__ = {version!r}
 __version_info__ = {version_tuple!r}
 """
 
-[build.targets.sdist]
-include = [
-  "/tests",
-]
+[build.targets.wheel]
+packages = ["abacus"]
