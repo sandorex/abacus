@@ -42,4 +42,5 @@ target-version = ["py38"]
 
 [tool.isort]
 profile = "black"
+line_length = 80
 lines_between_types = 1

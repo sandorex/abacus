@@ -23,11 +23,11 @@ from io import StringIO, TextIOBase
 from tokenize import TokenInfo
 from tokenize import generate_tokens as _generate_tokens
 from tokenize import untokenize as _untokenize
+from types import CodeType
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    CodeType,
     Dict,
     List,
     Mapping,
