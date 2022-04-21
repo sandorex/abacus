@@ -18,7 +18,7 @@
 import ast, importlib.resources
 
 from abc import abstractmethod, ABCMeta
-from io import StringIO
+from io import StringIO, TextIOBase
 from tokenize import (
     TokenInfo,
     untokenize as _untokenize,
@@ -26,7 +26,7 @@ from tokenize import (
 )
 from . import ns, __version__, __version_info__
 from typing import (
-    TYPE_CHECKING, Dict, Optional, TypeVar, Callable, Any, List, Mapping, Union
+    TYPE_CHECKING, Dict, TextIO, TypeVar, Callable, Any, List, Mapping, Union
 )
 
 if TYPE_CHECKING:
@@ -63,8 +63,6 @@ class StringTransformer(metaclass=ABCMeta):
             return self._untokenize(tokens).splitlines(keepends=True)
 
 # TODO: config
-# TODO: add str and ast transformers to a list in base and then one function
-# in the python shell runs over all them
 class ShellBase(metaclass=ABCMeta):
     EVENT_POST_EXECUTE = 'post_execute'
 
@@ -109,32 +107,26 @@ class ShellBase(metaclass=ABCMeta):
 
         return f"""\t:: Abacus {__version__} ({cls.shell_type()}) ::"""
 
-    # TODO: make this str only but BasicShell can support multiple input types
-    # do i even need this to be common between all shells?
     @abstractmethod
-    def run(self, code: Union[str, ast.Module, ast.Expression, CodeObj]):
-        """Evaluates the code inside the namespace after ast and string
-        transformations and then triggers `post_execute` event
+    def run(self, code: str):
+        """Evaluates the code inside the namespace after all transformations
 
-        Do note that not all transformations can be done on all types of input:
-            `str`: All transformations are performed
-            `ast.Module` or `ast.Expression`: Only AST transformation will be performed
-            `CodeObj`: No transformation is done"""
+        Triggers `self.EVENT_POST_EXECUTE`"""
         pass
 
-    def run_file(self, file: Union[str, 'Path'], *, package=None):
-        """Runs whole file interactively
+    def run_file(self, file: Union[str, 'Path', TextIO]):
+        """Runs whole file using `self.run`"""
 
-        `file` is either `str` or `pathlib.Path`
-        `package` look for the file inside python package `package`"""
+        if not isinstance(file, TextIOBase):
+            file = open(file, 'r')
 
-        if package is not None:
-            fp = importlib.resources.open_text(package, str(file))
-        else:
-            fp = open(file, 'r')
+        with file:
+            self.run(file.read())
 
-        with fp:
-            self.run(fp.read())
+    def run_package_file(self, file: str, package: str):
+        """Run file from package `package`"""
+        fp = importlib.resources.open_text(package, file)
+        self.run_file(fp)
 
     # TODO: bring back debug enable
 
@@ -156,7 +148,7 @@ class ShellBase(metaclass=ABCMeta):
         from .transformer import AbacusTransformer
         self.transformer = AbacusTransformer(self)
 
-        self.run_file('init.pyi', package=ns.__package__)
+        self.run_package_file('init.pyi', ns.__package__)
 
         # TODO: run the real init file somewhere on the system
 
@@ -197,6 +189,7 @@ class ShellBase(metaclass=ABCMeta):
         if isinstance(code, ast.Module):
             # remove last statement
             last_stmt = code.body.pop()
+            ast.fix_missing_locations(code)
 
             # execute the rest
             self.execute(code, filename=filename)
@@ -214,31 +207,6 @@ class ShellBase(metaclass=ABCMeta):
     def unregister_event(self, event: str, handler):
         self.event_callbacks.setdefault(event, []).remove(handler)
 
-    def trigger_event(self, event, *args, **kwargs) -> Optional[Any]:
-        if fn := self.event_callbacks.get(event, None) is not None:
-            return fn(*args, **kwargs)
-
-        return None
-
-    # # TODO: this does not need to be in the ShellBase
-    # def ast_transform(self, node: ast.AST) -> ast.AST:
-    #     """Performs AST transformation on the node
-
-    #     WARNING: the input `node` may be modified in the process"""
-
-    #     i: ast.NodeTransformer
-    #     for i in self.ast_transformers:
-    #         i.visit(node)
-
-    #     return node
-
-    # def str_transform(self, code: List[str]) -> List[str]:
-    #     """Performs string transformation on the code
-
-    #     WARNING: the input `code` may be modified in the process"""
-
-    #     i: Callable[[str], str]
-    #     for i in self.str_transformers:
-    #         code = i(code)
-
-    #     return code
+    def trigger_event(self, event, *args, **kwargs):
+        for fn in self.event_callbacks.get(event, []):
+            fn(*args, **kwargs)

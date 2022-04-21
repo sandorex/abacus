@@ -26,10 +26,13 @@ def main_basic(*, pyinstaller=False):
     while True:
         try:
             x = input(':: ')
+
+            if not x:
+                break
+
+            shell.run(x)
         except KeyboardInterrupt:
             break
+        except Exception as ex:
+            print('Error:', ex)
 
-        if not x:
-            break
-
-        shell.run_interactive(x)
