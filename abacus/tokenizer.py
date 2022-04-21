@@ -15,22 +15,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import ast, token, traceback
-
-from keyword import iskeyword
 from tokenize import TokenInfo
 from typing import List
-from ..shell import ShellExtension, ShellBase, StringTransformer
 
-def _token_good(tok: TokenInfo):
-    if tok.type == token.NUMBER:
-        return True
-    elif tok.type == token.NAME:
-        return not iskeyword(tok.string)
-
-    return False
-
-def _shift_tokens(tokens: List[TokenInfo], index: int, amount: int):
+def shift_tokens(tokens: List[TokenInfo], index: int, amount: int):
     line = tokens[index].start[0]
     end_index = 0
 
@@ -58,11 +46,11 @@ def _shift_tokens(tokens: List[TokenInfo], index: int, amount: int):
             end=end,
         )
 
-def _insert_token(tokens: List[TokenInfo],
-                  index: int,
-                  token: TokenInfo,
-                  *,
-                  padding=True):
+def insert_token(tokens: List[TokenInfo],
+                 index: int,
+                 token: TokenInfo,
+                 *,
+                 padding=True):
     """Inserts token and moved tokens after it so the tokens can be untokenized
 
     If `token.start` or `token.end` are `None` then they are automatically set
@@ -113,7 +101,7 @@ def _insert_token(tokens: List[TokenInfo],
             token = token._replace(line='')
 
     if token.start[0] != token.end[0]:
-        raise Exception('multi line tokens are not supported')
+        raise NotImplementedError('multi line tokens are not supported yet')
 
     token_length = token.end[1] - token.start[1]
     if padding:
@@ -125,87 +113,5 @@ def _insert_token(tokens: List[TokenInfo],
             end=(token.end[0], token.end[1] + 2)
         )
 
-    _shift_tokens(tokens, index, token_length)
+    shift_tokens(tokens, index, token_length)
     tokens.insert(index, token)
-
-def _insert_mul(tokens: List[TokenInfo], index: int):
-    _insert_token(tokens, index, TokenInfo(token.OP, '*', None, None, None))
-
-class ImpliedMultiplication(ast.NodeTransformer, StringTransformer, ShellExtension):
-    def __init__(self, shell: ShellBase):
-        ShellExtension.__init__(self)
-
-        self.shell = shell
-
-    def register(self):
-        # needs to run after auto symbol
-        self.shell.str_transformers.insert(1, self)
-        self.shell.ast_transformers.insert(1, self)
-
-        return super().register()
-
-    def unregister(self):
-        self.shell.str_transformers.remove(self)
-        self.shell.ast_transformers.remove(self)
-
-        super().unregister()
-
-    def transform_tokens(self, tokens: List[TokenInfo]) -> List[TokenInfo]:
-        # i am doing this with recursion, is it the best solution? probably not
-        def do(tokens):
-            prev = tokens[0]
-            for i in range(1, len(tokens)):
-                cur = tokens[i]
-                if _token_good(cur) \
-                    and (_token_good(prev) or prev.exact_type == token.RPAR):
-                        _insert_mul(tokens, i)
-                        do(tokens)
-                        break
-
-                prev = cur
-
-        do(tokens)
-
-        return tokens
-
-    def visit_Call(self, node: ast.Call):
-        # turns calls into multiplication if name called is not callable
-        try:
-            result = None
-            try:
-                result = self.shell.evaluate(ast.Expression(body=node.func))
-            except NameError:
-                # it does not exist
-                pass
-            except Exception as ex:
-                return node
-
-            # if it's callable then do nothing
-            if (
-                    # skip functions
-                    callable(result) \
-
-                    # there is nothing in the function, or just keywords so skip it
-                    or len(node.args) == 0
-                ):
-                return node
-
-            # if there are multiple 'arguments' in the function call then treat
-            # it as a tuple
-            # NOTE: keywords are ignored
-            if len(node.args) > 1:
-                right = ast.Tuple(
-                    elts=node.args,
-                    ctx=ast.Load()
-                )
-            else:
-                right = node.args[0]
-
-            return ast.BinOp(
-                left=node.func,
-                op=ast.Mult(),
-                right=right
-            )
-        except Exception:
-            print('ImplMulTransformer: Error while parsing AST:\n', traceback.format_exc())
-            return node
