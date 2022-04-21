@@ -20,7 +20,7 @@ import code
 
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
-from ..shell import CodeObj, ShellBase
+from ..shell import CodeType, ShellBase
 
 
 class BasicShell(ShellBase):
@@ -59,14 +59,14 @@ class BasicShell(ShellBase):
         return "basic"
 
     # NOTE: ShellBase.run can only be used with a string
-    def run(self, code: Union[str, ast.Module, ast.Expression, CodeObj]):
+    def run(self, code: Union[str, ast.Module, ast.Expression, CodeType]):
         """Evaluates the code inside the namespace after ast and string
         transformations and then triggers `post_execute` event
 
         Do note that not all transformations can be done on all types of input:
             `str`: All transformations are performed
             `ast.Module` or `ast.Expression`: Only AST transformation will be performed
-            `CodeObj`: No transformation is done"""
+            `CodeType`: No transformation is done"""
 
         # TODO: rework this whole thing, it's a mess
 
@@ -92,7 +92,7 @@ class BasicShell(ShellBase):
 
     def compile_ast(
         self, node: ast.Module
-    ) -> Tuple[CodeObj, Optional[CodeObj]]:
+    ) -> Tuple[CodeType, Optional[CodeType]]:
         """Compiles the node and returns the last statement as `ast.Interactive`
         and if there are more than one statements then rest of the module is
         also returned
