@@ -24,35 +24,15 @@ from tokenize import (
     untokenize as _untokenize,
     generate_tokens as _generate_tokens
 )
-from typing import  Dict, TypeVar, Callable, Any, List, Mapping, Union
 from . import ns, __version__, __version_info__
+from typing import (
+    TYPE_CHECKING, Dict, Optional, TypeVar, Callable, Any, List, Mapping, Union
+)
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 CodeObj = TypeVar('CodeObj')
-
-class ShellExtension:
-    def __init__(self):
-        self._registered = False
-
-    def register(self):
-        self._registered = True
-
-        return self
-
-    def unregister(self):
-        self._registered = False
-
-    def register_set(self, state: bool=None):
-        if state is None:
-            self.register_set(not self.is_registered())
-        elif state == True:
-            if not self.is_registered():
-                self.register()
-        else:
-            if self.is_registered():
-                self.unregister()
-
-    def is_registered(self) -> bool:
-        return self._registered
 
 class StringTransformer(metaclass=ABCMeta):
     @classmethod
@@ -82,17 +62,14 @@ class StringTransformer(metaclass=ABCMeta):
             # without them
             return self._untokenize(tokens).splitlines(keepends=True)
 
+# TODO: config
+# TODO: add str and ast transformers to a list in base and then one function
+# in the python shell runs over all them
 class ShellBase(metaclass=ABCMeta):
-    def __init__(self):
-        # importing here so there is no circular import
-        from .extensions.auto_symbol import AutoSymbol
-        from .extensions.implied_multiplication import ImpliedMultiplication
-        from .extensions.debug import Debugger
+    EVENT_POST_EXECUTE = 'post_execute'
 
-        # NOTE: making instances not registering them!
-        self.ext_auto_symbol = AutoSymbol(self)
-        self.ext_impl_multi = ImpliedMultiplication(self)
-        self.ext_debug = Debugger(self)
+    def __init__(self):
+        self.transformer = None
 
     @property
     @abstractmethod
@@ -120,44 +97,6 @@ class ShellBase(metaclass=ABCMeta):
         """Returns string for which type of shell it is"""
         pass
 
-    def run_file(self, file: Union[str, Any], *, package=None):
-        """Runs whole file interactively
-
-        `package` look for the file inside python package `package`"""
-
-        if package is not None:
-            fp = importlib.resources.open_text(package, str(file))
-        else:
-            fp = open(file, 'r')
-
-
-        with fp:
-            self.run_interactive(fp.read())
-
-    @abstractmethod
-    def run_interactive(self,
-                        code: Union[str, ast.Module, CodeObj],
-                        transform=True,
-                        imitate_user_input=False):
-        """Evaluates the code inside the namespace after ast and string
-        transformations and then triggers `post_execute` event
-
-        `transform`: Should input be transformed, do note that not all
-        transformations can be done on all types of input:
-            `str`: All transformations are performed
-            `ast.Module`: Only AST transformation will be performed
-            `CodeObj`: No transformation is done"""
-        pass
-
-    def set_debug(self, state: bool):
-        self.ext_debug.register_set(state)
-
-    def set_impl_multi(self, state: bool):
-        self.ext_impl_multi.register_set(state)
-
-    def set_auto_symbol(self, state: bool):
-        self.ext_auto_symbol.register_set(state)
-
     @classmethod
     def title(cls) -> str:
         """Window title"""
@@ -170,15 +109,37 @@ class ShellBase(metaclass=ABCMeta):
 
         return f"""\t:: Abacus {__version__} ({cls.shell_type()}) ::"""
 
-    def push(self, _locals: Mapping[str, Any]) -> 'ShellBase':
-        """Set locals in the user namespace"""
+    # TODO: make this str only but BasicShell can support multiple input types
+    # do i even need this to be common between all shells?
+    @abstractmethod
+    def run(self, code: Union[str, ast.Module, ast.Expression, CodeObj]):
+        """Evaluates the code inside the namespace after ast and string
+        transformations and then triggers `post_execute` event
 
-        self.user_ns.update(_locals)
+        Do note that not all transformations can be done on all types of input:
+            `str`: All transformations are performed
+            `ast.Module` or `ast.Expression`: Only AST transformation will be performed
+            `CodeObj`: No transformation is done"""
+        pass
 
-        return self
+    def run_file(self, file: Union[str, 'Path'], *, package=None):
+        """Runs whole file interactively
 
-    def init_ns(self, _locals: Mapping[str, Any]={}) -> 'ShellBase':
-        """Initializes the namespace with default values"""
+        `file` is either `str` or `pathlib.Path`
+        `package` look for the file inside python package `package`"""
+
+        if package is not None:
+            fp = importlib.resources.open_text(package, str(file))
+        else:
+            fp = open(file, 'r')
+
+        with fp:
+            self.run(fp.read())
+
+    # TODO: bring back debug enable
+
+    def load(self, _locals: Dict[str, Any]={}) -> 'ShellBase':
+        """Sets things up like namespace, transformer and config and stuff"""
 
         self.push({
             **_locals,
@@ -188,61 +149,96 @@ class ShellBase(metaclass=ABCMeta):
             'abacus': self,
         })
 
-        # NOTE: importing sympy using execute cause transformers need it and
+        # NOTE: importing sympy using execute cause transformer needs it and
         # execute does not do any transformation
         self.execute('import sympy')
 
-        self.set_auto_symbol(True)
-        self.set_impl_multi(True)
+        from .transformer import AbacusTransformer
+        self.transformer = AbacusTransformer(self)
 
-        # run the init file and let it take care of everything
         self.run_file('init.pyi', package=ns.__package__)
+
+        # TODO: run the real init file somewhere on the system
 
         return self
 
-    def execute(self, code: Union[str, List[ast.AST], CodeObj]):
-        """Executes the code inside the namespace verbatim"""
+    def push(self, _locals: Mapping[str, Any]) -> 'ShellBase':
+        """Set locals in the user namespace"""
 
-        if isinstance(code, ast.AST):
-            code = compile(code, filename='<input>', mode='exec')
+        self.user_ns.update(_locals)
+
+        return self
+
+    def execute(self,
+                code: Union[str, ast.Module, CodeObj],
+                *,
+                filename='<input>'):
+        """Executes the code inside the namespace verbatim
+
+        No events are triggered"""
+
+        if isinstance(code, ast.Module):
+            code = compile(code, filename=filename, mode='exec')
 
         exec(code, self.user_ns)
 
-    def evaluate(self, code: Union[str, ast.AST, CodeObj]) -> Any:
+    def evaluate(self,
+                 code: Union[str, ast.Module, ast.Expression, CodeObj],
+                 *,
+                 filename='<input>') -> Any:
         """Evaluates the code inside namespace verbatim and returns result of
         the last statement
 
-        Does not print anything"""
+        `filename` is passed to compile and will be in tracebacks when an
+        exception occurs
 
-        if isinstance(code, ast.AST):
-            code = compile(code, filename='<input>', mode='eval')
+        No events are triggered"""
+
+        if isinstance(code, ast.Module):
+            # remove last statement
+            last_stmt = code.body.pop()
+
+            # execute the rest
+            self.execute(code, filename=filename)
+
+            # compile the last statement
+            code = compile(last_stmt, filename=filename, mode='eval')
+        elif isinstance(code, ast.Expression):
+            code = compile(code, filename=filename, mode='eval')
 
         return eval(code, self.user_ns)
 
-    def _register_event(self, event: str, handler):
+    def register_event(self, event: str, handler):
         self.event_callbacks.setdefault(event, []).append(handler)
 
-    def _unregister_event(self, event: str, handler):
+    def unregister_event(self, event: str, handler):
         self.event_callbacks.setdefault(event, []).remove(handler)
 
-    def ast_transform(self, node: ast.AST) -> ast.AST:
-        """Performs AST transformation on the node
+    def trigger_event(self, event, *args, **kwargs) -> Optional[Any]:
+        if fn := self.event_callbacks.get(event, None) is not None:
+            return fn(*args, **kwargs)
 
-        WARNING: the input `node` may be modified in the process"""
+        return None
 
-        i: ast.NodeTransformer
-        for i in self.ast_transformers:
-            i.visit(node)
+    # # TODO: this does not need to be in the ShellBase
+    # def ast_transform(self, node: ast.AST) -> ast.AST:
+    #     """Performs AST transformation on the node
 
-        return node
+    #     WARNING: the input `node` may be modified in the process"""
 
-    def str_transform(self, code: List[str]) -> List[str]:
-        """Performs string transformation on the code
+    #     i: ast.NodeTransformer
+    #     for i in self.ast_transformers:
+    #         i.visit(node)
 
-        WARNING: the input `code` may be modified in the process"""
+    #     return node
 
-        i: Callable[[str], str]
-        for i in self.str_transformers:
-            code = i(code)
+    # def str_transform(self, code: List[str]) -> List[str]:
+    #     """Performs string transformation on the code
 
-        return code
+    #     WARNING: the input `code` may be modified in the process"""
+
+    #     i: Callable[[str], str]
+    #     for i in self.str_transformers:
+    #         code = i(code)
+
+    #     return code

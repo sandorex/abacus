@@ -20,8 +20,12 @@ import ast, code
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from ..shell import CodeObj, ShellBase
 
-# TODO: basic shell is kinda borked, StringTransformer changes messed it up
+# TODO: borked it again, reimplement methods that were deleted from ShellBase
+# TODO: strip the input before running it!!!!!
 class BasicShell(ShellBase):
+    """Basic shell that does basic input cleanup and managing, made for testing
+    and for other shells to be based on top of it"""
+
     def __init__(self):
         super().__init__()
 
