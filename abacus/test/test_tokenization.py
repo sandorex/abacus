@@ -19,7 +19,7 @@ import tokenize
 
 from tokenize import TokenInfo
 from ..shell import StringTransformer
-from ..extensions.implied_multiplication import _shift_tokens, _insert_token, _insert_mul
+from ..tokenizer import shift_tokens, insert_token
 
 def test_tokenize_untokenize():
     """Tests if tokenizing and untokenizing text does not change the result"""
@@ -67,6 +67,6 @@ def test_shift_tokens():
         TokenInfo(tokenize.ENDMARKER, '', (3, 0), (3, 0), ''),
     ]
 
-    _shift_tokens(TOKENS_INPUT, INDEX, INCR)
+    shift_tokens(TOKENS_INPUT, INDEX, INCR)
 
     assert TOKENS_INPUT == TOKENS_OUTPUT, 'Tokens arent shifted properly'

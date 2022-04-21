@@ -117,6 +117,7 @@ class ShellBase(metaclass=ABCMeta):
     def run_file(self, file: Union[str, 'Path', TextIO]):
         """Runs whole file using `self.run`"""
 
+        # TODO: file should be TextIO but isinstance fails
         if not isinstance(file, TextIOBase):
             file = open(file, 'r')
 

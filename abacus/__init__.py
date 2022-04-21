@@ -22,6 +22,6 @@ try:
 except ImportError:
     # just in case the build system is not ran
     __version__ = '0.0.0'
-    __version_info__ = (0, 0, 0)
+    __version_info__ = (0, 0, 0) # type: ignore
 
 from .main import main
