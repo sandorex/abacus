@@ -15,10 +15,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import ast, code
+import ast
+import code
 
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+
 from ..shell import CodeObj, ShellBase
+
 
 class BasicShell(ShellBase):
     """Basic shell that does basic input cleanup and managing, made for testing
@@ -53,7 +56,7 @@ class BasicShell(ShellBase):
 
     @staticmethod
     def shell_type() -> str:
-        return 'basic'
+        return "basic"
 
     # NOTE: ShellBase.run can only be used with a string
     def run(self, code: Union[str, ast.Module, ast.Expression, CodeObj]):
@@ -70,7 +73,7 @@ class BasicShell(ShellBase):
         if isinstance(code, str):
             code = self.str_transform(code.strip().splitlines(keepends=True))
 
-            code = ast.parse(''.join(code), filename='<input>', mode='exec')
+            code = ast.parse("".join(code), filename="<input>", mode="exec")
 
         if isinstance(code, ast.AST):
             self.ast_transform(code)
@@ -87,7 +90,9 @@ class BasicShell(ShellBase):
 
         self.trigger_event(self.EVENT_POST_EXECUTE)
 
-    def compile_ast(self, node: ast.Module) -> Tuple[CodeObj, Optional[CodeObj]]:
+    def compile_ast(
+        self, node: ast.Module
+    ) -> Tuple[CodeObj, Optional[CodeObj]]:
         """Compiles the node and returns the last statement as `ast.Interactive`
         and if there are more than one statements then rest of the module is
         also returned
@@ -96,11 +101,13 @@ class BasicShell(ShellBase):
 
         stmt = node.body.pop(-1)
         ast.fix_missing_locations(stmt)
-        stmt = compile(ast.Interactive(body=[stmt]), filename='<input>', mode='single')
+        stmt = compile(
+            ast.Interactive(body=[stmt]), filename="<input>", mode="single"
+        )
 
         module = None
         if len(node.body) >= 1:
-            module = compile(node, filename='<input>', mode='exec')
+            module = compile(node, filename="<input>", mode="exec")
 
         return stmt, module
 

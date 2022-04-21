@@ -18,8 +18,10 @@
 import ast
 
 from typing import Any, Callable, Dict, List
+
 from ..shell import ShellBase
-from . import prompt, aliases
+from . import aliases, prompt
+
 
 # TODO: override ipythonshell class to better get debug stuff and maybe directly
 # transform stuff?
@@ -57,12 +59,12 @@ class IPythonShell(ShellBase):
 
     @staticmethod
     def shell_type() -> str:
-        return 'ipython'
+        return "ipython"
 
     @classmethod
     def title(cls) -> str:
         # add current directory to the title
-        return super().title() + ' [{cwd}]'
+        return super().title() + " [{cwd}]"
 
     def run(self, code: str):
         self.ipython.run_cell(code)

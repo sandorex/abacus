@@ -17,6 +17,7 @@
 
 from .basic_shell import BasicShell
 
+
 # TODO: this is really crude
 def main_basic(*, pyinstaller=False):
     shell = BasicShell()
@@ -25,7 +26,7 @@ def main_basic(*, pyinstaller=False):
 
     while True:
         try:
-            x = input(':: ')
+            x = input(":: ")
 
             if not x:
                 break
@@ -34,5 +35,4 @@ def main_basic(*, pyinstaller=False):
         except KeyboardInterrupt:
             break
         except Exception as ex:
-            print('Error:', ex)
-
+            print("Error:", ex)

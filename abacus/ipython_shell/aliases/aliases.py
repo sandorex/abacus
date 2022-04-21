@@ -17,14 +17,15 @@
 
 import platform
 
+
 def load_ipython_extension(ipy):
     # magic aliases
     for i, j in [
-        ('var', 'who'),
-        ('val', 'whos'),
+        ("var", "who"),
+        ("val", "whos"),
     ]:
         ipy.magics_manager.register_alias(i, j)
 
     # cmd aliases
-    if platform.system().lower() == 'windows':
-        ipy.alias_manager.define_alias('clear', 'cls') # TODO: check on linux
+    if platform.system().lower() == "windows":
+        ipy.alias_manager.define_alias("clear", "cls")  # TODO: check on linux

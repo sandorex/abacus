@@ -15,7 +15,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import pytest, sys
+import sys
+
+import pytest
 
 # run test on the package
-pytest.main(['--pyargs', __package__] + sys.argv[1:])
+pytest.main(["--pyargs", __package__] + sys.argv[1:])

@@ -15,24 +15,31 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import ast, importlib.resources
+import ast
+import importlib.resources
 
-from abc import abstractmethod, ABCMeta
+from abc import ABCMeta, abstractmethod
 from io import StringIO, TextIOBase
-from tokenize import (
-    TokenInfo,
-    untokenize as _untokenize,
-    generate_tokens as _generate_tokens
-)
-from . import ns, __version__, __version_info__
+from tokenize import TokenInfo
+from tokenize import generate_tokens as _generate_tokens
+from tokenize import untokenize as _untokenize
 from typing import (
-    TYPE_CHECKING, Dict, TextIO, TypeVar, Callable, Any, List, Mapping, Union
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    CodeType,
+    Dict,
+    List,
+    Mapping,
+    TextIO,
+    Union,
 )
+
+from . import __version__, __version_info__, ns
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-CodeObj = TypeVar('CodeObj')
 
 class StringTransformer(metaclass=ABCMeta):
     @classmethod
@@ -52,7 +59,7 @@ class StringTransformer(metaclass=ABCMeta):
     def __call__(self, lines: List[str]) -> List[str]:
         lines = self.transform(lines)
 
-        tokens = self._tokenize(''.join(lines))
+        tokens = self._tokenize("".join(lines))
         tokens = self.transform_tokens(tokens)
 
         if not tokens:
@@ -62,9 +69,10 @@ class StringTransformer(metaclass=ABCMeta):
             # without them
             return self._untokenize(tokens).splitlines(keepends=True)
 
+
 # TODO: config
 class ShellBase(metaclass=ABCMeta):
-    EVENT_POST_EXECUTE = 'post_execute'
+    EVENT_POST_EXECUTE = "post_execute"
 
     def __init__(self):
         self.transformer = None
@@ -114,12 +122,12 @@ class ShellBase(metaclass=ABCMeta):
         Triggers `self.EVENT_POST_EXECUTE`"""
         pass
 
-    def run_file(self, file: Union[str, 'Path', TextIO]):
+    def run_file(self, file: Union[str, "Path", TextIO]):
         """Runs whole file using `self.run`"""
 
         # TODO: file should be TextIO but isinstance fails
         if not isinstance(file, TextIOBase):
-            file = open(file, 'r')
+            file = open(file, "r")
 
         with file:
             self.run(file.read())
@@ -131,54 +139,58 @@ class ShellBase(metaclass=ABCMeta):
 
     # TODO: bring back debug enable
 
-    def load(self, _locals: Dict[str, Any]={}) -> 'ShellBase':
+    def load(self, _locals: Dict[str, Any] = {}) -> "ShellBase":
         """Sets things up like namespace, transformer and config and stuff"""
 
-        self.push({
-            **_locals,
-            '__version__': __version__,
-            '__version_info__': __version_info__,
-            '__abacus__': self.shell_type(),
-            'abacus': self,
-        })
+        self.push(
+            {
+                **_locals,
+                "__version__": __version__,
+                "__version_info__": __version_info__,
+                "__abacus__": self.shell_type(),
+                "abacus": self,
+            }
+        )
 
         # NOTE: importing sympy using execute cause transformer needs it and
         # execute does not do any transformation
-        self.execute('import sympy')
+        self.execute("import sympy")
 
         from .transformer import AbacusTransformer
+
         self.transformer = AbacusTransformer(self)
 
-        self.run_package_file('init.pyi', ns.__package__)
+        self.run_package_file("init.pyi", ns.__package__)
 
         # TODO: run the real init file somewhere on the system
 
         return self
 
-    def push(self, _locals: Mapping[str, Any]) -> 'ShellBase':
+    def push(self, _locals: Mapping[str, Any]) -> "ShellBase":
         """Set locals in the user namespace"""
 
         self.user_ns.update(_locals)
 
         return self
 
-    def execute(self,
-                code: Union[str, ast.Module, CodeObj],
-                *,
-                filename='<input>'):
+    def execute(
+        self, code: Union[str, ast.Module, CodeType], *, filename="<input>"
+    ):
         """Executes the code inside the namespace verbatim
 
         No events are triggered"""
 
         if isinstance(code, ast.Module):
-            code = compile(code, filename=filename, mode='exec')
+            code = compile(code, filename=filename, mode="exec")
 
         exec(code, self.user_ns)
 
-    def evaluate(self,
-                 code: Union[str, ast.Module, ast.Expression, CodeObj],
-                 *,
-                 filename='<input>') -> Any:
+    def evaluate(
+        self,
+        code: Union[str, ast.Module, ast.Expression, CodeType],
+        *,
+        filename="<input>",
+    ) -> Any:
         """Evaluates the code inside namespace verbatim and returns result of
         the last statement
 
@@ -196,9 +208,9 @@ class ShellBase(metaclass=ABCMeta):
             self.execute(code, filename=filename)
 
             # compile the last statement
-            code = compile(last_stmt, filename=filename, mode='eval')
+            code = compile(last_stmt, filename=filename, mode="eval")
         elif isinstance(code, ast.Expression):
-            code = compile(code, filename=filename, mode='eval')
+            code = compile(code, filename=filename, mode="eval")
 
         return eval(code, self.user_ns)
 

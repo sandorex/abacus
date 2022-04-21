@@ -19,5 +19,5 @@
 
 from .ipython_shell import main_ipython
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main_ipython()

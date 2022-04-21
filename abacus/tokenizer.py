@@ -18,6 +18,7 @@
 from tokenize import TokenInfo
 from typing import List
 
+
 def shift_tokens(tokens: List[TokenInfo], index: int, amount: int):
     line = tokens[index].start[0]
     end_index = 0
@@ -46,11 +47,10 @@ def shift_tokens(tokens: List[TokenInfo], index: int, amount: int):
             end=end,
         )
 
-def insert_token(tokens: List[TokenInfo],
-                 index: int,
-                 token: TokenInfo,
-                 *,
-                 padding=True):
+
+def insert_token(
+    tokens: List[TokenInfo], index: int, token: TokenInfo, *, padding=True
+):
     """Inserts token and moved tokens after it so the tokens can be untokenized
 
     If `token.start` or `token.end` are `None` then they are automatically set
@@ -92,16 +92,18 @@ def insert_token(tokens: List[TokenInfo],
 
     # set end position
     if token.end[1] is None:
-        token = token._replace(end=(token.end[0], token.start[1] + len(token.string)))
+        token = token._replace(
+            end=(token.end[0], token.start[1] + len(token.string))
+        )
 
     if token.line is None:
         if prev is not None:
             token = token._replace(line=prev.line)
         else:
-            token = token._replace(line='')
+            token = token._replace(line="")
 
     if token.start[0] != token.end[0]:
-        raise NotImplementedError('multi line tokens are not supported yet')
+        raise NotImplementedError("multi line tokens are not supported yet")
 
     token_length = token.end[1] - token.start[1]
     if padding:
@@ -110,7 +112,7 @@ def insert_token(tokens: List[TokenInfo],
         # so that there is one empty space to the left
         token = token._replace(
             start=(token.start[0], token.start[1] + 1),
-            end=(token.end[0], token.end[1] + 2)
+            end=(token.end[0], token.end[1] + 2),
         )
 
     shift_tokens(tokens, index, token_length)
