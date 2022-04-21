@@ -7,20 +7,18 @@ Powerful interactive calculator *made in Python using Python with Python support
 To install Abacus run the following command with pip installed
 
 ```shell
-python -m pip install abacus-icalc[full]
+python -m pip install abacus-icalc[ipython]
 ```
-
-`[full]` tells it to install IPython as a dependency as that is the best version currently
 
 ### Latest
 Another option is to install the latest version from master branch
 ```shell
-python -m pip install abacus-icalc[full]@https://github.com/sandorex/abacus.git
+python -m pip install abacus-icalc[ipython]@https://github.com/sandorex/abacus.git
 ```
 
 For other branches append `@branch` to the url like so
 ```shell
-python -m pip install abacus-icalc[full]@git+https://github.com/sandorex/abacus.git@branch
+python -m pip install abacus-icalc[ipython]@git+https://github.com/sandorex/abacus.git@branch
 ```
 
 ## IPython or not

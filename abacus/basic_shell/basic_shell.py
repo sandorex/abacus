@@ -15,13 +15,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import ast, code
+import ast
+import code
 
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
-from ..shell import CodeObj, ShellBase
 
-# TODO: basic shell is kinda borked, StringTransformer changes messed it up
+from ..shell import CodeType, ShellBase
+
+
 class BasicShell(ShellBase):
+    """Basic shell that does basic input cleanup and managing, made for testing
+    and for other shells to be based on top of it"""
+
     def __init__(self):
         super().__init__()
 
@@ -31,7 +36,7 @@ class BasicShell(ShellBase):
         self._event_callbacks = {}
         self.interpreter = code.InteractiveInterpreter(self.user_ns)
 
-        self.init_ns()
+        self.load()
 
     @property
     def user_ns(self) -> Dict[str, Any]:
@@ -51,18 +56,26 @@ class BasicShell(ShellBase):
 
     @staticmethod
     def shell_type() -> str:
-        return 'basic'
+        return "basic"
 
-    def run_interactive(self,
-                        code: Union[str, List[ast.AST], CodeObj],
-                        transform=True):
+    # NOTE: ShellBase.run can only be used with a string
+    def run(self, code: Union[str, ast.Module, ast.Expression, CodeType]):
+        """Evaluates the code inside the namespace after ast and string
+        transformations and then triggers `post_execute` event
+
+        Do note that not all transformations can be done on all types of input:
+            `str`: All transformations are performed
+            `ast.Module` or `ast.Expression`: Only AST transformation will be performed
+            `CodeType`: No transformation is done"""
+
+        # TODO: rework this whole thing, it's a mess
+
         if isinstance(code, str):
-            if transform:
-                code = self.str_transform(code)
+            code = self.str_transform(code.strip().splitlines(keepends=True))
 
-            code = ast.parse(code, filename='<input>', mode='exec')
+            code = ast.parse("".join(code), filename="<input>", mode="exec")
 
-        if transform:
+        if isinstance(code, ast.AST):
             self.ast_transform(code)
 
         (stmt, module) = self.compile_ast(code)
@@ -70,9 +83,16 @@ class BasicShell(ShellBase):
         if module is not None:
             self.interpreter.runcode(module)
 
+        # TODO: experiment with manually printing instead of single eval, that
+        # way i can control how everything is printed and for example single
+        # value inside an array can be extracted
         self.interpreter.runcode(stmt)
 
-    def compile_ast(self, node: ast.Module) -> Tuple[CodeObj, Optional[CodeObj]]:
+        self.trigger_event(self.EVENT_POST_EXECUTE)
+
+    def compile_ast(
+        self, node: ast.Module
+    ) -> Tuple[CodeType, Optional[CodeType]]:
         """Compiles the node and returns the last statement as `ast.Interactive`
         and if there are more than one statements then rest of the module is
         also returned
@@ -81,10 +101,34 @@ class BasicShell(ShellBase):
 
         stmt = node.body.pop(-1)
         ast.fix_missing_locations(stmt)
-        stmt = compile(ast.Interactive(body=[stmt]), filename='<input>', mode='single')
+        stmt = compile(
+            ast.Interactive(body=[stmt]), filename="<input>", mode="single"
+        )
 
         module = None
         if len(node.body) >= 1:
-            module = compile(node, filename='<input>', mode='exec')
+            module = compile(node, filename="<input>", mode="exec")
 
         return stmt, module
+
+    def ast_transform(self, node: ast.AST) -> ast.AST:
+        """Performs AST transformation on the node
+
+        WARNING: the input `node` may be modified in the process"""
+
+        i: ast.NodeTransformer
+        for i in self.ast_transformers:
+            i.visit(node)
+
+        return node
+
+    def str_transform(self, code: List[str]) -> List[str]:
+        """Performs string transformation on the code
+
+        WARNING: the input `code` may be modified in the process"""
+
+        i: Callable[[str], str]
+        for i in self.str_transformers:
+            code = i(code)
+
+        return code

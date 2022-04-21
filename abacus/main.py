@@ -17,6 +17,7 @@
 
 # NOTE: this is moved here so entry point could be made
 
+
 def main():
     from abacus.basic_shell import main_basic
 

@@ -17,10 +17,14 @@
 
 import ast
 
-from typing import Any, Callable, Dict, List, Union
-from ..shell import CodeObj, ShellBase
-from . import prompt, aliases
+from typing import Any, Callable, Dict, List
 
+from ..shell import ShellBase
+from . import aliases, prompt
+
+
+# TODO: override ipythonshell class to better get debug stuff and maybe directly
+# transform stuff?
 class IPythonShell(ShellBase):
     def __init__(self, /, ipy):
         super().__init__()
@@ -35,7 +39,7 @@ class IPythonShell(ShellBase):
         self.ipython.extension_manager.load_extension(prompt.__name__)
         self.ipython.extension_manager.load_extension(aliases.__name__)
 
-        self.init_ns()
+        self.load()
 
     @property
     def user_ns(self) -> Dict[str, Any]:
@@ -55,22 +59,12 @@ class IPythonShell(ShellBase):
 
     @staticmethod
     def shell_type() -> str:
-        return 'ipython'
+        return "ipython"
 
     @classmethod
     def title(cls) -> str:
         # add current directory to the title
-        return super().title() + ' [{cwd}]'
+        return super().title() + " [{cwd}]"
 
-    def run_interactive(self, code: Union[str, List[ast.AST], CodeObj]) -> Any:
-        if isinstance(code, str):
-            self.ipython.run_cell(code)
-        else:
-            # TODO:
-            raise NotImplementedError()
-
-    def ast_transform(self, node: ast.AST) -> ast.AST:
-        return self.ipython.transform_ast(node)
-
-    def str_transform(self, code: str) -> str:
-        return self.ipython.transform_cell(code)
+    def run(self, code: str):
+        self.ipython.run_cell(code)

@@ -17,25 +17,30 @@
 
 from IPython.terminal.prompts import Prompts, Token
 
+
 class BasicPrompt(Prompts):
     def in_prompt_tokens(self, cli=None):
-        return [(Token.Prompt, ':: ')]
+        return [(Token.Prompt, ":: ")]
 
     def out_prompt_tokens(self):
-       return []
+        return []
 
     def continuation_prompt_tokens(self, cli=None, width=None):
         # NOTE: two dots cause its the same length as the in token, it keeps the
         # indentation same between the first line and the rest
-        return [(Token.PromptNum, '.. ')]
+        return [(Token.PromptNum, ".. ")]
+
 
 def load_ipython_extension(ipy):
     prompt = BasicPrompt(ipy)
     prompt.old = ipy.prompts
     ipy.prompts = prompt
 
+
 def unload_ipython_extension(ipy):
-    if hasattr(ipy.prompts, 'old'):
+    if hasattr(ipy.prompts, "old"):
         ipy.prompts = ipy.prompts.old
     else:
-        print('Unable to unload prompt for some reason, maybe it was not loaded?')
+        print(
+            "Unable to unload prompt for some reason, maybe it was not loaded?"
+        )

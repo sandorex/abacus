@@ -15,24 +15,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from .basic_shell import BasicShell
+import sys
 
+import pytest
 
-# TODO: this is really crude
-def main_basic(*, pyinstaller=False):
-    shell = BasicShell()
-
-    print(shell.welcome_message())
-
-    while True:
-        try:
-            x = input(":: ")
-
-            if not x:
-                break
-
-            shell.run(x)
-        except KeyboardInterrupt:
-            break
-        except Exception as ex:
-            print("Error:", ex)
+# run test on the package
+pytest.main(["--pyargs", __package__] + sys.argv[1:])

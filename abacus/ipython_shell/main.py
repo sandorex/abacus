@@ -15,14 +15,19 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import IPython, sys
+import sys
+
+import IPython
 
 from traitlets.config import Config as IPythonConfig
+
 from .ipython_shell import IPythonShell
+
 
 def load_ipython_extension(ipy):
     """This function is loaded inside IPython environment"""
     IPythonShell(ipy)
+
 
 def main_ipython(*, pyinstaller=False):
     """Starting point of IPython version of abacus"""
@@ -34,11 +39,12 @@ def main_ipython(*, pyinstaller=False):
 
     # load abacus directly so it isn't an extension
     cfg.InteractiveShellApp.exec_lines = [
-        f'from {__package__} import load_ipython_extension',
-        'load_ipython_extension(get_ipython()); del load_ipython_extension',
+        f"from {__package__} import load_ipython_extension",
+        "load_ipython_extension(get_ipython()); del load_ipython_extension",
     ]
 
     IPython.start_ipython(sys.argv[1:], config=cfg)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main_ipython()

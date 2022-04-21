@@ -21,3 +21,6 @@
 sympy.init_printing(use_unicode=False)
 
 from sympy import solve
+
+# easter eggs :)
+this = cool

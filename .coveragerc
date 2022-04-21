@@ -1,0 +1,36 @@
+[run]
+branch = True
+
+[report]
+omit =
+    # ignore tests themself
+    abacus/test/*
+
+    # ignore namespace stuff as that is not valid python
+    abacus/ns/*
+
+    # ignore special files like __main__ and __init__
+    abacus/__*__.py
+    abacus/*/__*__.py
+
+    # these are basically just runners
+    abacus/main.py
+    abacus/ipython.py
+    abacus/basic.py
+
+exclude_lines =
+    # Don't complain if tests don't hit defensive assertion code:
+    raise AssertionError
+    raise NotImplementedError
+
+    # Don't complain if non-runnable code isn't run:
+    if 0:
+    if __name__ == .__main__.:
+
+    # Don't complain about abstract methods, they aren't run:
+    @(abc\.)?abstractmethod
+
+ignore_errors = True
+
+[html]
+directory = coverage_html_report
