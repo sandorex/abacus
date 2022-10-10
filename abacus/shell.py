@@ -154,7 +154,7 @@ class ShellBase(metaclass=ABCMeta):
 
         # NOTE: importing sympy using execute cause transformer needs it and
         # execute does not do any transformation
-        self.execute("import sympy")
+        self.execute("import symengine")
 
         from .transformer import AbacusTransformer
 

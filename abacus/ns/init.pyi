@@ -18,9 +18,13 @@
 # this file sets all the defaults for abacus
 # type: ignore
 
-sympy.init_printing(use_unicode=False)
+#sympy.init_printing(use_unicode=False)
 
-from sympy import solve
+# TODO: this does not work so fix it manually by using the pretty printer
+symengine.init_printing() # NOTE use_unicode is not an option
+
+#from sympy import solve
+from symengine.lib.symengine_wrapper import solve
 
 # easter eggs :)
 this = cool

@@ -1,0 +1,7 @@
+symengine is a priority cause it makes it work super duper fast compared to sympy
+
+- [ ] make symengine the default and lazy load sympy if needed
+- [ ] ability to globally change should sympy or symengine be used
+- [ ] emulate sympy init_printing with pretty printing
+- [ ] make the basic shell actually usable to obselete ipython shell
+- [ ] remove tokenizer and use asttokens library if possible

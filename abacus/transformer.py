@@ -23,7 +23,7 @@ from keyword import iskeyword
 from tokenize import TokenInfo
 from typing import List
 
-import sympy
+import symengine
 
 from .shell import ShellBase, StringTransformer
 from .tokenizer import insert_token
@@ -128,7 +128,7 @@ class AbacusTransformer(ast.NodeTransformer, StringTransformer):
         """Checks if expr is a defined symbol in user namespace, used after
         all undefined names are defined as symbols"""
         if isinstance(expr, ast.Name):
-            return isinstance(self.shell.user_ns.get(expr.id), sympy.Symbol)
+            return isinstance(self.shell.user_ns.get(expr.id), symengine.Symbol)
 
         return False
 
@@ -151,11 +151,11 @@ class AbacusTransformer(ast.NodeTransformer, StringTransformer):
         # run on children so symbols are made
         self.generic_visit(node)
 
-        # NOTE: for some reason bool is also an int?
+        # NOTE: bool is a subclass of int
         if isinstance(node.value, int) and not isinstance(node.value, bool):
             return ast.Call(
                 func=ast.Attribute(
-                    value=ast.Name(id="sympy", ctx=ast.Load()),
+                    value=ast.Name(id="symengine", ctx=ast.Load()),
                     attr="Integer",
                     ctx=ast.Load(),
                 ),
@@ -179,7 +179,7 @@ class AbacusTransformer(ast.NodeTransformer, StringTransformer):
             self.symbols.append(node.id)
 
             # TODO: FIXME: execute AST not raw code!
-            self.shell.execute(f'{node.id} = sympy.Symbol("{node.id}")')
+            self.shell.execute(f'{node.id} = symengine.Symbol("{node.id}")')
 
         return node
 
@@ -194,7 +194,7 @@ class AbacusTransformer(ast.NodeTransformer, StringTransformer):
             if isinstance(node.ops[0], ast.Eq):
                 return ast.Call(
                     func=ast.Attribute(
-                        value=ast.Name(id="sympy", ctx=ast.Load()),
+                        value=ast.Name(id="symengine", ctx=ast.Load()),
                         attr="Eq",
                         ctx=ast.Load(),
                     ),
@@ -207,7 +207,7 @@ class AbacusTransformer(ast.NodeTransformer, StringTransformer):
             elif isinstance(node.ops[0], ast.NotEq):
                 return ast.Call(
                     func=ast.Attribute(
-                        value=ast.Name(id="sympy", ctx=ast.Load()),
+                        value=ast.Name(id="symengine", ctx=ast.Load()),
                         attr="Ne",
                         ctx=ast.Load(),
                     ),
