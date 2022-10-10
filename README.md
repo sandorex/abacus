@@ -1,8 +1,7 @@
 # Abacus
 [![PyPI version](https://badge.fury.io/py/abacus-icalc.svg)](https://badge.fury.io/py/abacus-icalc)
 
-Powerful interactive calculator made in Python using Python with Python support
-*Beware full of danger noodles*
+*Powerful interactive calculator made in Python using Python with Python support*
 
 ## Installation
 To install Abacus run the following command with pip installed
