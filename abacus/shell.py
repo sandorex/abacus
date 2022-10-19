@@ -103,6 +103,17 @@ class ShellBase(metaclass=ABCMeta):
         """Returns string for which type of shell it is"""
         pass
 
+    # TODO:
+    # @staticmethod
+    # @abstractmethod
+    # def new() -> 'ShellBase':
+    #     """Creates new shell instance"""
+    #     pass
+
+    # @abstractmethod
+    # def start_eval_loop():
+    #     pass
+
     @classmethod
     def title(cls) -> str:
         """Window title"""
