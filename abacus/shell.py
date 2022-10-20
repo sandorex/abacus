@@ -40,6 +40,49 @@ from . import __version__, __version_info__, ns
 if TYPE_CHECKING:
     from pathlib import Path
 
+class Transformation(metaclass=ABCMeta):
+    @abstractmethod
+    def __call__(self, input: str) -> str:
+        pass
+
+class ASTTransformation(Transformation):
+    def __init__(self, func: Callable[[List[TokenInfo]], List[TokenInfo]]):
+        self.func = func
+
+    @classmethod
+    def _tokenize(cls, input: str) -> List[TokenInfo]:
+        return list(_generate_tokens(StringIO(input).readline))
+
+    @classmethod
+    def _untokenize(cls, tokens: List[TokenInfo]) -> str:
+        return _untokenize(tokens)
+
+    def __call__(self, input: str) -> str:
+        return self._untokenize(self.func(self._tokenize(input)))
+
+class StringTransformation(Transformation):
+    def __init__(self, func: Callable[[str], str]):
+        self.func = func
+
+    def __call__(self, input: str) -> str:
+        return self.func(input)
+
+class Transformer:
+    def __init__(self, transformations: Transformation) -> None:
+        self.transformations = transformations
+
+    def transform(self, input: str) -> str:
+        result = input
+        for t in self.transformations:
+            result = t(result)
+
+        return result
+
+    def transform_lines(self, lines: Union[str, List[str]]) -> List[str]:
+        if isinstance(lines, str):
+            lines = lines.splitlines()
+
+        return [self.transform(x) for x in lines]
 
 class StringTransformer(metaclass=ABCMeta):
     @classmethod
@@ -56,6 +99,7 @@ class StringTransformer(metaclass=ABCMeta):
     def transform_tokens(self, tokens: List[TokenInfo]) -> List[TokenInfo]:
         return []
 
+    # NOTE (20/10/2022): did i really make it like this?!?
     def __call__(self, lines: List[str]) -> List[str]:
         lines = self.transform(lines)
 
@@ -87,6 +131,7 @@ class ShellBase(metaclass=ABCMeta):
     def event_callbacks(self) -> Dict[str, List[Callable]]:
         pass
 
+    # TODO: merge transformers into single list of transformers with transformations
     @property
     @abstractmethod
     def ast_transformers(self) -> List[ast.NodeTransformer]:
