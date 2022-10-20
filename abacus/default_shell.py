@@ -15,32 +15,27 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import code
 
-from typing import Any, List, Optional, Tuple
-from math import floor
-from code import compile_command
+from typing import Any, List
 from pygments.lexers.python import PythonLexer
 from prompt_toolkit.shortcuts import PromptSession
 from prompt_toolkit.lexers import PygmentsLexer
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.formatted_text import HTML
 from prompt_toolkit.history import FileHistory
-from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.key_binding import KeyBindings, KeyPressEvent
 from prompt_toolkit.keys import Keys
-from prompt_toolkit.buffer import Buffer
 
 from .shell import ShellBase
 
 class Shell(ShellBase):
-    """TODO"""
+    """Default shell for abacus, based on prompt_toolkit library"""
 
     HISTORY_FILE = 'abacus.hist'
 
     def __init__(self):
         super().__init__()
 
-        self.interpreter = code.InteractiveInterpreter(self.user_ns)
         self.bindings = KeyBindings()
         self.history = FileHistory(self.HISTORY_FILE)
         self.prompt_session = PromptSession(self._prompt,
@@ -51,39 +46,35 @@ class Shell(ShellBase):
             key_bindings=self.bindings,
             history=self.history,
             prompt_continuation=self._prompt_continuation,
+            rprompt=self._rprompt,
+            multiline=True,
         )
 
-        # override enter key for "smart" multiline editor like ipython
-        @self.bindings.add(Keys.Enter, eager=True)
-        def _(event):
-            buffer: Buffer = event.current_buffer
+        # toggle for multiline input mode
+        self._multiline = False
 
-            if not buffer.text.strip():
-                return
-
-            # TODO: clean this up and make it a method in shellbase
-            input_code_lines = buffer.text.splitlines()
-            cobj = compile_command('\n'.join(self.str_transform(input_code_lines)), '<input>', 'exec')
-            if cobj is None:
-                indent_level = self._get_indent_level(buffer.text.splitlines()[-1])
-                buffer.newline(copy_margin=False)
-                # copy indent level from last line
-                buffer.insert_text(' ' * (3 * indent_level + 3), fire_event=False)
+        @self.bindings.add(Keys.Enter)
+        def _(event: KeyPressEvent):
+            if self._multiline:
+                event.current_buffer.newline()
             else:
-                if '\n' in buffer.text:
-                    # accept only on empty line
-                    if buffer.text.splitlines()[-1].strip() == '':
-                        buffer.validate_and_handle()
-                    else:
-                        buffer.newline()
-                else:
-                    buffer.validate_and_handle()
+                event.app.exit(result=event.current_buffer.text)
+
+        @self.bindings.add(Keys.Escape, eager=True)
+        def _(event: KeyPressEvent):
+            self._multiline = not self._multiline
 
         self._load()
 
     @staticmethod
     def shell_type() -> str:
         return "default"
+
+    def _rprompt(self) -> str:
+        if self._multiline:
+            return HTML('<green>M</green>')
+        else:
+            return ''
 
     def _prompt(self) -> Any:
         # TODO: red prompt on error?
@@ -96,27 +87,6 @@ class Shell(ShellBase):
         else:
             return ''
 
-    @staticmethod
-    def _get_indent_level(input: str, indent=3) -> int:
-        count = 0
-        for i in input:
-            if not i == ' ':
-                break
-
-            count += 1
-
-        return floor(count / indent)
-
-    # @staticmethod
-    # def _is_input_complete(input: str) -> Tuple[Optional[bool], Optional[Exception]]:
-    #     """Checks if input is complete python code
-    #     TODO
-    #     """
-    #     try:
-    #         return compile_command(input, '<input>', 'exec') is not None
-    #     except (SyntaxError, ValueError, OverflowError) as ex:
-    #         return None, ex
-
     def _get_completer_list(self) -> List[str]:
         return [x for x in self.user_ns.keys() if not x.startswith('_')]
 
@@ -125,7 +95,11 @@ class Shell(ShellBase):
             text: str = None
             try:
                 text = self.prompt_session.prompt()
-                self.run(text)
+                if text.strip():
+                    try:
+                        self.run(text)
+                    except Exception:
+                        self.interpreter.showtraceback()
             except KeyboardInterrupt: # ctrl c
                 pass # just ignore it
             except EOFError: # ctrl d

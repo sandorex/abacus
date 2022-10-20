@@ -17,4 +17,6 @@
 
 from .default_shell import Shell
 
-Shell().start_eval_loop()
+shell = Shell()
+print(shell.greeting())
+shell.start_eval_loop()

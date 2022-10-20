@@ -17,18 +17,15 @@
 
 import ast
 import importlib.resources
+import code
 
 from abc import ABCMeta, abstractmethod
-from io import StringIO, TextIOBase
-from tokenize import TokenInfo
-from tokenize import generate_tokens as _generate_tokens
-from tokenize import untokenize as _untokenize
+from io import TextIOBase
 from types import CodeType
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Dict,
     List,
     Mapping,
     Optional,
@@ -51,19 +48,20 @@ class ShellBase(metaclass=ABCMeta):
     def __init__(self):
         self.str_transformers: List[Callable[[str], str]] = []
         self.ast_transformers: List[Callable[[str], str]] = []
-        self.event_callbacks: Mapping[str, List[Callable[['ShellBase', Any]]]]
+        self.event_callbacks: Mapping[str, List[Callable[['ShellBase', Any]]]] = {}
         self.user_ns: Mapping[str, Any] = {
             "__version__": __version__,
             "__version_info__": __version_info__,
             "__abacus__": self.shell_type(),
             "abacus": self,
         }
+        self.interpreter = code.InteractiveInterpreter(self.user_ns)
 
         # add the transformer
         from .transformer import AbacusTransformer
         AbacusTransformer(self)
 
-        self.run_package_file("init.pyi", ns.__package__)
+        self.run_in_package_file("init.pyi", ns.__package__)
 
     @staticmethod
     @abstractmethod
@@ -123,16 +121,35 @@ class ShellBase(metaclass=ABCMeta):
 
         return stmt, module
 
+    def _is_line_complete(self, line: str, filename=FILENAME) -> Optional[bool]:
+        """Tests whether a line of code needs more code to be complete
+
+        WARNING: This function is not and cannot be 100% accurate"""
+
+        result = None
+        try:
+            result = code.compile_command(self._transform(line), filename, 'exec')
+        except:
+            pass
+
+        return result is not None
+
     def run(self, code: Union[str, ast.Module]):
         """Evaluates the code inside the namespace after all transformations
 
         Triggers `self.EVENT_POST_EXECUTE`"""
 
         if isinstance(code, str):
+            if len(code.strip()) == 0:
+                raise Exception('No code provided')
+
             code = self._transform(code)
             code = self._parse_ast(code)
 
         self._ast_transform(code)
+
+        if len(code.body) == 0:
+            raise Exception('ast.Module has an empty body')
 
         (stmt, module) = self._compile_interactive(code)
 

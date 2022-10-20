@@ -15,14 +15,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from abc import ABCMeta, abstractmethod
 import ast
+from io import StringIO
 import token
 import traceback
 
+from abc import ABCMeta
 from keyword import iskeyword
+from typing import List
 from tokenize import TokenInfo
-from typing import Any, List, Mapping
+from tokenize import generate_tokens as _generate_tokens
+from tokenize import untokenize as _untokenize
 
 import symengine
 
@@ -30,12 +33,22 @@ from .shell import ShellBase
 from .tokenizer import insert_token
 
 class Transformer(metaclass=ABCMeta):
-    def __init__(self, shell: 'ShellBase'):
+    def __init__(self, shell: ShellBase):
         self.shell = shell
 
-    @abstractmethod
+    @staticmethod
+    def _tokenize(input: str) -> List[TokenInfo]:
+        """Helper method to convert a string into tokens"""
+        return list(_generate_tokens(StringIO(input).readline))
+
+    @staticmethod
+    def _untokenize(tokens: List[TokenInfo]) -> str:
+        """Helper method to convert tokens into a string"""
+        return _untokenize(tokens)
+
     def __call__(self, input: str) -> str:
-        pass
+        # this should not be called on its own, it's just for typing
+        raise NotImplementedError()
 
 # TODO: remove direct links to sympy or symengine in the transformer
 class AbacusTransformer(ast.NodeTransformer, Transformer):
@@ -68,9 +81,9 @@ class AbacusTransformer(ast.NodeTransformer, Transformer):
 
     # impl multiplication #
 
-    # TODO: this needs to be done as str transformer too..
-    def transform_tokens(self, tokens: List[TokenInfo]) -> List[TokenInfo]:
-        # i am doing this with recursion, is it the best solution? probably not
+    def __call__(self, input: str) -> str:
+        tokens = self._tokenize(input)
+
         def do(tokens):
             prev = tokens[0]
             for i in range(1, len(tokens)):
@@ -90,7 +103,7 @@ class AbacusTransformer(ast.NodeTransformer, Transformer):
 
         do(tokens)
 
-        return tokens
+        return self._untokenize(tokens)
 
     def visit_Call(self, node: ast.Call):
         # run on children so that symbols are made
@@ -225,7 +238,7 @@ class AbacusTransformer(ast.NodeTransformer, Transformer):
 
         return node
 
-    def post_execute(self):
+    def post_execute(self, *args, **kwargs):
         """Deletes symbols created during parsing"""
         for i in self.symbols:
             # TODO: FIXME: execute AST not raw code!
