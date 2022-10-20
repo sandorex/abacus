@@ -15,36 +15,33 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from abc import ABCMeta, abstractmethod
 import ast
 import token
 import traceback
 
 from keyword import iskeyword
 from tokenize import TokenInfo
-from typing import List
+from typing import Any, List, Mapping
 
 import symengine
 
-from .shell import ShellBase, StringTransformer
+from .shell import ShellBase
 from .tokenizer import insert_token
 
-
-def _token_good(tok: TokenInfo):
-    if tok.type == token.NUMBER:
-        return True
-    elif tok.type == token.NAME:
-        return not iskeyword(tok.string)
-
-    return False
-
-
-def _insert_mul(tokens: List[TokenInfo], index: int):
-    insert_token(tokens, index, TokenInfo(token.OP, "*", None, None, None))
-
-
-class AbacusTransformer(ast.NodeTransformer, StringTransformer):
-    def __init__(self, shell: ShellBase):
+class Transformer(metaclass=ABCMeta):
+    def __init__(self, shell: 'ShellBase'):
         self.shell = shell
+
+    @abstractmethod
+    def __call__(self, input: str) -> str:
+        pass
+
+# TODO: remove direct links to sympy or symengine in the transformer
+class AbacusTransformer(ast.NodeTransformer, Transformer):
+    def __init__(self, shell: ShellBase):
+        super().__init__(shell)
+
         self.symbols = []
 
         self.shell.str_transformers.append(self)
@@ -53,8 +50,25 @@ class AbacusTransformer(ast.NodeTransformer, StringTransformer):
             ShellBase.EVENT_POST_EXECUTE, self.post_execute
         )
 
-    # impl multi #
+        if 'symengine' not in self.shell.user_ns:
+            self.shell.execute("import symengine")
 
+    @staticmethod
+    def _token_good(tok: TokenInfo):
+        if tok.type == token.NUMBER:
+            return True
+        elif tok.type == token.NAME:
+            return not iskeyword(tok.string)
+
+        return False
+
+    @staticmethod
+    def _insert_mul(tokens: List[TokenInfo], index: int):
+        insert_token(tokens, index, TokenInfo(token.OP, "*", None, None, None))
+
+    # impl multiplication #
+
+    # TODO: this needs to be done as str transformer too..
     def transform_tokens(self, tokens: List[TokenInfo]) -> List[TokenInfo]:
         # i am doing this with recursion, is it the best solution? probably not
         def do(tokens):
@@ -62,13 +76,13 @@ class AbacusTransformer(ast.NodeTransformer, StringTransformer):
             for i in range(1, len(tokens)):
                 cur = tokens[i]
                 if (
-                    _token_good(cur)
-                    and (_token_good(prev) or prev.exact_type == token.RPAR)
+                    self._token_good(cur)
+                    and (self._token_good(prev) or prev.exact_type == token.RPAR)
                 ) or (
                     prev.exact_type == token.RPAR
                     and cur.exact_type == token.LPAR
                 ):
-                    _insert_mul(tokens, i)
+                    self._insert_mul(tokens, i)
                     do(tokens)
                     break
 
@@ -114,15 +128,6 @@ class AbacusTransformer(ast.NodeTransformer, StringTransformer):
             return node
 
     # auto symbol #
-
-    def post_execute(self):
-        """Deletes symbols created during parsing"""
-        for i in self.symbols:
-            # TODO: FIXME: execute AST not raw code!
-            self.shell.execute(f"del {i}")
-
-        # remove old symbols
-        self.symbols = []
 
     def _is_symbol(self, expr: ast.Expr):
         """Checks if expr is a defined symbol in user namespace, used after
@@ -219,3 +224,12 @@ class AbacusTransformer(ast.NodeTransformer, StringTransformer):
                 )
 
         return node
+
+    def post_execute(self):
+        """Deletes symbols created during parsing"""
+        for i in self.symbols:
+            # TODO: FIXME: execute AST not raw code!
+            self.shell.execute(f"del {i}")
+
+        # remove old symbols
+        self.symbols = []

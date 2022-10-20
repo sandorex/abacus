@@ -23,5 +23,3 @@ except ImportError:
     # just in case the build system is not ran
     __version__ = "0.0.0.dev0+unknown"
     __version_info__ = (0, 0, 0, 'dev0', 'unknown')  # type: ignore
-
-from .main import main

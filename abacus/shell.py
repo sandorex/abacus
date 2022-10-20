@@ -31,7 +31,9 @@ from typing import (
     Dict,
     List,
     Mapping,
+    Optional,
     TextIO,
+    Tuple,
     Union,
 )
 
@@ -40,107 +42,28 @@ from . import __version__, __version_info__, ns
 if TYPE_CHECKING:
     from pathlib import Path
 
-class Transformation(metaclass=ABCMeta):
-    @abstractmethod
-    def __call__(self, input: str) -> str:
-        pass
-
-class ASTTransformation(Transformation):
-    def __init__(self, func: Callable[[List[TokenInfo]], List[TokenInfo]]):
-        self.func = func
-
-    @classmethod
-    def _tokenize(cls, input: str) -> List[TokenInfo]:
-        return list(_generate_tokens(StringIO(input).readline))
-
-    @classmethod
-    def _untokenize(cls, tokens: List[TokenInfo]) -> str:
-        return _untokenize(tokens)
-
-    def __call__(self, input: str) -> str:
-        return self._untokenize(self.func(self._tokenize(input)))
-
-class StringTransformation(Transformation):
-    def __init__(self, func: Callable[[str], str]):
-        self.func = func
-
-    def __call__(self, input: str) -> str:
-        return self.func(input)
-
-class Transformer:
-    def __init__(self, transformations: Transformation) -> None:
-        self.transformations = transformations
-
-    def transform(self, input: str) -> str:
-        result = input
-        for t in self.transformations:
-            result = t(result)
-
-        return result
-
-    def transform_lines(self, lines: Union[str, List[str]]) -> List[str]:
-        if isinstance(lines, str):
-            lines = lines.splitlines()
-
-        return [self.transform(x) for x in lines]
-
-class StringTransformer(metaclass=ABCMeta):
-    @classmethod
-    def _tokenize(cls, input: str) -> List[TokenInfo]:
-        return list(_generate_tokens(StringIO(input).readline))
-
-    @classmethod
-    def _untokenize(cls, tokens: List[TokenInfo]) -> str:
-        return _untokenize(tokens)
-
-    def transform(self, lines: List[str]) -> List[str]:
-        return lines
-
-    def transform_tokens(self, tokens: List[TokenInfo]) -> List[TokenInfo]:
-        return []
-
-    # NOTE (20/10/2022): did i really make it like this?!?
-    def __call__(self, lines: List[str]) -> List[str]:
-        lines = self.transform(lines)
-
-        tokens = self._tokenize("".join(lines))
-        tokens = self.transform_tokens(tokens)
-
-        if not tokens:
-            return lines
-        else:
-            # NOTE: the NL characters are required and it wont run properly
-            # without them
-            return self._untokenize(tokens).splitlines(keepends=True)
-
-
 # TODO: config
 class ShellBase(metaclass=ABCMeta):
     EVENT_POST_EXECUTE = "post_execute"
 
+    FILENAME='<input>'
+
     def __init__(self):
-        self.transformer = None
+        self.str_transformers: List[Callable[[str], str]] = []
+        self.ast_transformers: List[Callable[[str], str]] = []
+        self.event_callbacks: Mapping[str, List[Callable[['ShellBase', Any]]]]
+        self.user_ns: Mapping[str, Any] = {
+            "__version__": __version__,
+            "__version_info__": __version_info__,
+            "__abacus__": self.shell_type(),
+            "abacus": self,
+        }
 
-    @property
-    @abstractmethod
-    def user_ns(self) -> Dict[str, Any]:
-        pass
+        # add the transformer
+        from .transformer import AbacusTransformer
+        AbacusTransformer(self)
 
-    @property
-    @abstractmethod
-    def event_callbacks(self) -> Dict[str, List[Callable]]:
-        pass
-
-    # TODO: merge transformers into single list of transformers with transformations
-    @property
-    @abstractmethod
-    def ast_transformers(self) -> List[ast.NodeTransformer]:
-        pass
-
-    @property
-    @abstractmethod
-    def str_transformers(self) -> List[Callable]:
-        pass
+        self.run_package_file("init.pyi", ns.__package__)
 
     @staticmethod
     @abstractmethod
@@ -148,77 +71,101 @@ class ShellBase(metaclass=ABCMeta):
         """Returns string for which type of shell it is"""
         pass
 
-    # TODO:
-    # @staticmethod
-    # @abstractmethod
-    # def new() -> 'ShellBase':
-    #     """Creates new shell instance"""
-    #     pass
+    @abstractmethod
+    def start_eval_loop():
+        pass
 
-    # @abstractmethod
-    # def start_eval_loop():
-    #     pass
-
-    @classmethod
     def title(cls) -> str:
         """Window title"""
 
         return f"""Abacus {__version__} ({cls.shell_type()})"""
 
-    @classmethod
-    def welcome_message(cls) -> str:
-        """Greet message shown on startup of abacus"""
+    def greeting(cls) -> str:
+        """Greet message that should be shown on startup of abacus"""
 
         return f"""\t:: Abacus {__version__} ({cls.shell_type()}) ::"""
 
-    @abstractmethod
-    def run(self, code: str):
+    def _transform(self, code: str) -> str:
+        """Performs string transformation on the code"""
+
+        i: Callable[[str], str]
+        for i in self.str_transformers:
+            code = i(code)
+
+        return code
+
+    def _ast_transform(self, node: ast.AST):
+        """Performs AST transformations on the node"""
+
+        i: ast.NodeTransformer
+        for i in self.ast_transformers:
+            i.visit(node)
+
+    def _parse_ast(self, code: str, filename=FILENAME) -> ast.Module:
+        return ast.parse(code, filename=filename, mode="exec")
+
+    def _compile_interactive(self, node: ast.Module, filename=FILENAME) -> Tuple[CodeType, Optional[CodeType]]:
+        """Compiles the node and returns the last statement as `ast.Interactive`
+        and if there are more than one statements then rest of the module is
+        also returned
+
+        Returns last statement, rest of statements"""
+
+        stmt = node.body.pop(-1)
+        ast.fix_missing_locations(stmt)
+        stmt = compile(
+            ast.Interactive(body=[stmt]), filename=filename, mode="single"
+        )
+
+        module = None
+        if len(node.body) >= 1:
+            module = compile(node, filename=filename, mode="exec")
+
+        return stmt, module
+
+    def run(self, code: Union[str, ast.Module]):
         """Evaluates the code inside the namespace after all transformations
 
         Triggers `self.EVENT_POST_EXECUTE`"""
-        pass
 
-    def run_file(self, file: Union[str, "Path", TextIO]):
+        if isinstance(code, str):
+            code = self._transform(code)
+            code = self._parse_ast(code)
+
+        self._ast_transform(code)
+
+        (stmt, module) = self._compile_interactive(code)
+
+        if module is not None:
+            self.interpreter.runcode(module)
+
+        # # TODO: experiment with manually printing instead of single eval, that
+        # # way i can control how everything is printed and for example single
+        # # value inside an array can be extracted
+        self.interpreter.runcode(stmt)
+
+        self._trigger_event(self.EVENT_POST_EXECUTE)
+
+    def run_file(self, file: Union[str, 'Path', TextIO]):
         """Runs whole file using `self.run`"""
 
-        # TODO: file should be TextIO but isinstance fails
         if not isinstance(file, TextIOBase):
             file = open(file, "r")
 
         with file:
             self.run(file.read())
 
-    def run_package_file(self, file: str, package: str):
+    def run_in_package_file(self, file: str, package: str):
         """Run file from package `package`"""
         fp = importlib.resources.open_text(package, file)
         self.run_file(fp)
 
     # TODO: bring back debug enable
 
-    def load(self, _locals: Dict[str, Any] = {}) -> "ShellBase":
-        """Sets things up like namespace, transformer and config and stuff"""
+    def _load(self) -> "ShellBase":
+        """Loads user config files, should be called by the shell after initalization"""
 
-        self.push(
-            {
-                **_locals,
-                "__version__": __version__,
-                "__version_info__": __version_info__,
-                "__abacus__": self.shell_type(),
-                "abacus": self,
-            }
-        )
-
-        # NOTE: importing sympy using execute cause transformer needs it and
-        # execute does not do any transformation
-        self.execute("import symengine")
-
-        from .transformer import AbacusTransformer
-
-        self.transformer = AbacusTransformer(self)
-
-        self.run_package_file("init.pyi", ns.__package__)
-
-        # TODO: run the real init file somewhere on the system
+        # TODO: run the user init file somewhere on the system
 
         return self
 
@@ -236,6 +183,7 @@ class ShellBase(metaclass=ABCMeta):
 
         No events are triggered"""
 
+        # NOTE: exec can handle both `CodeType` and `str` but not `ast.AST`
         if isinstance(code, ast.Module):
             code = compile(code, filename=filename, mode="exec")
 
@@ -276,6 +224,6 @@ class ShellBase(metaclass=ABCMeta):
     def unregister_event(self, event: str, handler):
         self.event_callbacks.setdefault(event, []).remove(handler)
 
-    def trigger_event(self, event, *args, **kwargs):
+    def _trigger_event(self, event, *args, **kwargs):
         for fn in self.event_callbacks.get(event, []):
-            fn(*args, **kwargs)
+            fn(self, *args, **kwargs)
