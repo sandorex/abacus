@@ -58,7 +58,7 @@ class Shell(ShellBase):
             if self._multiline:
                 event.current_buffer.newline()
             else:
-                event.app.exit(result=event.current_buffer.text)
+                event.current_buffer.validate_and_handle()
 
         @self.bindings.add(Keys.Escape, eager=True)
         def _(event: KeyPressEvent):
